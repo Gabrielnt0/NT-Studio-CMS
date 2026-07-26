@@ -1,0 +1,28 @@
+PS C:\Users\gaben\Documents\Projetos Dev\NT-Studio-CMS> tree src /F
+Listagem de caminhos de pasta
+O número de série do volume é 00000166 C036:C3F0
+C:\USERS\GABEN\DOCUMENTS\PROJETOS DEV\NT-STUDIO-CMS\SRC
+│   App.jsx
+│   main.jsx
+│   
+├───assets
+├───components
+├───features
+├───layouts
+│       MainLayout.jsx
+│       
+├───pages
+│       Dashboard.jsx
+│       
+├───router
+│       AppRouter.jsx
+│       
+├───services
+│       supabase.js
+│       
+├───styles
+│       globals.css
+│       variables.css
+│       
+└───utils
+PS C:\Users\gaben\Documents\Projetos Dev\NT-Studio-CMS> 
