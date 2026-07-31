@@ -13,9 +13,13 @@ const PROFILE_COLUMNS = `
   github_url,
   linkedin_url,
   website_url,
+  instagram_url,
+  youtube_url,
+  twitter_url,
   resume_url,
   avatar_url,
   available_for_work,
+  is_public,
   created_at,
   updated_at
 `;
@@ -36,9 +40,13 @@ function mapProfileFromDatabase(profile) {
     githubUrl: profile.github_url ?? "",
     linkedinUrl: profile.linkedin_url ?? "",
     websiteUrl: profile.website_url ?? "",
+    instagramUrl: profile.instagram_url ?? "",
+    youtubeUrl: profile.youtube_url ?? "",
+    twitterUrl: profile.twitter_url ?? "",
     resumeUrl: profile.resume_url ?? "",
     avatarUrl: profile.avatar_url ?? "",
     availableForWork: Boolean(profile.available_for_work),
+    isPublic: profile.is_public !== false,
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
   };
@@ -56,9 +64,13 @@ function mapProfileToDatabase(profile) {
     github_url: profile.githubUrl.trim() || null,
     linkedin_url: profile.linkedinUrl.trim() || null,
     website_url: profile.websiteUrl.trim() || null,
+    instagram_url: profile.instagramUrl.trim() || null,
+    youtube_url: profile.youtubeUrl.trim() || null,
+    twitter_url: profile.twitterUrl.trim() || null,
     resume_url: profile.resumeUrl.trim() || null,
     avatar_url: profile.avatarUrl.trim() || null,
     available_for_work: Boolean(profile.availableForWork),
+    is_public: profile.isPublic !== false,
   };
 }
 

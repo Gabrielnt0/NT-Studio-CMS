@@ -31,9 +31,13 @@ const emptyForm = {
   githubUrl: "",
   linkedinUrl: "",
   websiteUrl: "",
+  instagramUrl: "",
+  youtubeUrl: "",
+  twitterUrl: "",
   resumeUrl: "",
   avatarUrl: "",
   availableForWork: false,
+  isPublic: true,
 };
 
 export default function ProfilePage() {
@@ -65,9 +69,13 @@ export default function ProfilePage() {
       githubUrl: profile.githubUrl,
       linkedinUrl: profile.linkedinUrl,
       websiteUrl: profile.websiteUrl,
+      instagramUrl: profile.instagramUrl,
+      youtubeUrl: profile.youtubeUrl,
+      twitterUrl: profile.twitterUrl,
       resumeUrl: profile.resumeUrl,
       avatarUrl: profile.avatarUrl,
       availableForWork: profile.availableForWork,
+      isPublic: profile.isPublic,
     });
 
     setAvatarPreview(profile.avatarUrl);
@@ -357,6 +365,20 @@ export default function ProfilePage() {
                   Disponível para novos trabalhos
                 </span>
               </label>
+
+              <label className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 md:col-span-2">
+                <input
+                  type="checkbox"
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                />
+
+                <span className="text-sm text-zinc-300">
+                  Tornar este perfil público no site
+                </span>
+              </label>
             </div>
           </Card>
 
@@ -432,6 +454,33 @@ export default function ProfilePage() {
                 value={formData.websiteUrl}
                 onChange={handleInputChange}
                 placeholder="https://..."
+              />
+
+              <Input
+                label="Instagram"
+                name="instagramUrl"
+                type="url"
+                value={formData.instagramUrl}
+                onChange={handleInputChange}
+                placeholder="https://instagram.com/..."
+              />
+
+              <Input
+                label="YouTube"
+                name="youtubeUrl"
+                type="url"
+                value={formData.youtubeUrl}
+                onChange={handleInputChange}
+                placeholder="https://youtube.com/@..."
+              />
+
+              <Input
+                label="Twitter / X"
+                name="twitterUrl"
+                type="url"
+                value={formData.twitterUrl}
+                onChange={handleInputChange}
+                placeholder="https://x.com/..."
               />
 
               <Input
