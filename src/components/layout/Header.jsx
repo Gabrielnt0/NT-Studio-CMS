@@ -1,7 +1,7 @@
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 function getInitials(email) {
   if (!email) return "AD";
@@ -49,7 +49,7 @@ function Header({ onOpenMenu }) {
         <div className="min-w-0">
           <p className="truncate text-sm text-zinc-500">Painel administrativo</p>
           <h2 className="truncate text-lg font-semibold text-zinc-100">
-            NT Studio Platform
+            Portfolio CMS
           </h2>
         </div>
       </div>
@@ -70,7 +70,6 @@ function Header({ onOpenMenu }) {
           aria-label="Notificações"
         >
           <Bell size={19} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />
         </button>
 
         <div className="hidden text-right xl:block" title={user?.email ?? "Administrador"}>

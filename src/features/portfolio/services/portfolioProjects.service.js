@@ -5,7 +5,6 @@ function formatDate(dateString) {
 
   const date = new Date(dateString);
   const now = new Date();
-
   const diffMs = now - date;
 
   const minute = 1000 * 60;
@@ -65,8 +64,13 @@ function mapProjectFromDatabase(project) {
     githubUrl: project.github_url ?? "",
     demoUrl: project.demo_url ?? "",
     imageUrl: project.image_url ?? "",
+
     createdAt: formatDate(project.created_at),
     updatedAt: formatDate(project.updated_at),
+
+    // Datas originais preservadas para ordenação e integrações entre features.
+    createdAtIso: project.created_at ?? null,
+    updatedAtIso: project.updated_at ?? null,
   };
 }
 

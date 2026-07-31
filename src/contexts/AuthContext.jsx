@@ -9,7 +9,7 @@ import {
 } from "react";
 import { supabase } from "../services/supabase";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);

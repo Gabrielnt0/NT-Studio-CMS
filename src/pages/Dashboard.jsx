@@ -10,103 +10,96 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
+import { getDashboardOverview } from "../features/dashboard/services/dashboard.service";
 
-const statistics = [
-  {
-    title: "Projetos",
-    value: "12",
-    description: "Projetos cadastrados",
+const NUMBER_FORMATTER = new Intl.NumberFormat("pt-BR");
+
+const activityPresentation = {
+  project: {
     icon: BriefcaseBusiness,
     iconClass: "bg-blue-500/10 text-blue-400",
   },
-  {
-    title: "Habilidades",
-    value: "18",
-    description: "Competências registradas",
-    icon: Wrench,
-    iconClass: "bg-violet-500/10 text-violet-400",
-  },
-  {
-    title: "Visualizações",
-    value: "14.320",
-    description: "Visualizações no portfólio",
-    icon: Eye,
-    iconClass: "bg-emerald-500/10 text-emerald-400",
-  },
-  {
-    title: "Arquivos",
-    value: "42",
-    description: "Itens na biblioteca",
-    icon: Image,
-    iconClass: "bg-amber-500/10 text-amber-400",
-  },
-];
-
-const recentActivities = [
-  {
-    id: 1,
-    title: "Projeto atualizado",
-    description: "NT Studio CMS recebeu novas informações.",
-    time: "Há 5 minutos",
-    icon: BriefcaseBusiness,
-    iconClass: "bg-blue-500/10 text-blue-400",
-  },
-  {
-    id: 2,
-    title: "Nova imagem adicionada",
-    description: "Uma imagem foi enviada para a biblioteca.",
-    time: "Há 2 horas",
+  media: {
     icon: Image,
     iconClass: "bg-violet-500/10 text-violet-400",
   },
-  {
-    id: 3,
-    title: "Perfil editado",
-    description: "As informações profissionais foram atualizadas.",
-    time: "Ontem",
+  profile: {
     icon: UserRound,
     iconClass: "bg-emerald-500/10 text-emerald-400",
   },
-];
-
-const recentProjects = [
-  {
-    id: 1,
-    title: "NT Studio CMS",
-    category: "Desenvolvimento",
-    status: "Em desenvolvimento",
-    statusVariant: "blue",
-    updatedAt: "Hoje",
-  },
-  {
-    id: 2,
-    title: "Portfólio Gabriel",
-    category: "Portfólio",
-    status: "Publicado",
-    statusVariant: "green",
-    updatedAt: "Há 2 dias",
-  },
-  {
-    id: 3,
-    title: "Affilint",
-    category: "Plataforma",
-    status: "Planejamento",
-    statusVariant: "yellow",
-    updatedAt: "Há 5 dias",
-  },
-];
+};
 
 function Dashboard() {
+  const [overview, setOverview] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadDashboard = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      setOverview(await getDashboardOverview());
+    } catch (requestError) {
+      console.error("Erro ao carregar o dashboard:", requestError);
+      setError(requestError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const statistics = useMemo(
+    () => [
+      {
+        title: "Projetos",
+        value: NUMBER_FORMATTER.format(overview?.statistics.projects ?? 0),
+        description: "Projetos cadastrados",
+        icon: BriefcaseBusiness,
+        iconClass: "bg-blue-500/10 text-blue-400",
+      },
+      {
+        title: "Habilidades",
+        value: NUMBER_FORMATTER.format(overview?.statistics.skills ?? 0),
+        description: "Competências registradas",
+        icon: Wrench,
+        iconClass: "bg-violet-500/10 text-violet-400",
+      },
+      {
+        title: "Visualizações",
+        value: overview?.formattedViews ?? "0",
+        description: "Última leitura do Analytics",
+        icon: Eye,
+        iconClass: "bg-emerald-500/10 text-emerald-400",
+      },
+      {
+        title: "Arquivos",
+        value: NUMBER_FORMATTER.format(overview?.statistics.media ?? 0),
+        description: "Itens na biblioteca",
+        icon: Image,
+        iconClass: "bg-amber-500/10 text-amber-400",
+      },
+    ],
+    [overview],
+  );
+
+  const recentProjects = overview?.recentProjects ?? [];
+  const recentActivities = overview?.recentActivities ?? [];
+
   return (
     <div className="space-y-8">
       <section className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-blue-400">
             <Sparkles size={16} />
-            <span>NT Studio CMS</span>
+            <span>Portfolio CMS</span>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
@@ -114,7 +107,8 @@ function Dashboard() {
           </h1>
 
           <p className="mt-2 text-zinc-400">
-            Bem-vindo de volta, Gabriel. Gerencie o conteúdo do seu portfólio.
+            Bem-vindo de volta, {overview?.ownerName ?? "Administrador"}. Gerencie
+            o conteúdo real do seu portfólio.
           </p>
         </div>
 
@@ -127,6 +121,24 @@ function Dashboard() {
         </Link>
       </section>
 
+      {error && (
+        <Card className="border-red-500/30 bg-red-500/5 p-5">
+          <p className="font-medium text-red-300">
+            Não foi possível carregar os dados do Dashboard.
+          </p>
+          <p className="mt-1 text-sm text-red-300/70">
+            {error.message || "Confira a conexão e as permissões do Supabase."}
+          </p>
+          <button
+            type="button"
+            onClick={loadDashboard}
+            className="mt-4 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10"
+          >
+            Tentar novamente
+          </button>
+        </Card>
+      )}
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statistics.map(
           ({ title, value, description, icon: Icon, iconClass }) => (
@@ -134,8 +146,9 @@ function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-zinc-400">{title}</p>
-
-                  <p className="mt-3 text-3xl font-bold text-white">{value}</p>
+                  <p className="mt-3 text-3xl font-bold text-white">
+                    {isLoading ? "—" : value}
+                  </p>
                 </div>
 
                 <div
@@ -160,7 +173,7 @@ function Dashboard() {
             <div>
               <h2 className="font-semibold text-white">Atividades recentes</h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Últimas alterações realizadas no CMS.
+                Alterações identificadas nos seus dados.
               </p>
             </div>
 
@@ -168,23 +181,27 @@ function Dashboard() {
           </div>
 
           <div className="divide-y divide-zinc-800">
-            {recentActivities.map(
-              ({
-                id,
-                title,
-                description,
-                time,
-                icon: Icon,
-                iconClass,
-              }) => (
+            {!isLoading && recentActivities.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-zinc-500">
+                Nenhuma atividade recente encontrada.
+              </div>
+            )}
+
+            {recentActivities.map((activity) => {
+              const presentation =
+                activityPresentation[activity.type] ??
+                activityPresentation.project;
+              const Icon = presentation.icon;
+
+              return (
                 <article
-                  key={id}
+                  key={activity.id}
                   className="flex items-start gap-4 px-6 py-5 transition hover:bg-zinc-900"
                 >
                   <div
                     className={[
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                      iconClass,
+                      presentation.iconClass,
                     ].join(" ")}
                   >
                     <Icon size={18} />
@@ -192,16 +209,19 @@ function Dashboard() {
 
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-medium text-zinc-100">
-                      {title}
+                      {activity.title}
                     </h3>
-
-                    <p className="mt-1 text-sm text-zinc-500">{description}</p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {activity.description}
+                    </p>
                   </div>
 
-                  <span className="shrink-0 text-xs text-zinc-600">{time}</span>
+                  <span className="shrink-0 text-xs text-zinc-600">
+                    {activity.time}
+                  </span>
                 </article>
-              ),
-            )}
+              );
+            })}
           </div>
         </Card>
 
@@ -221,7 +241,6 @@ function Dashboard() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
                 <BriefcaseBusiness size={19} />
               </div>
-
               <div className="flex-1">
                 <p className="text-sm font-medium text-zinc-100">
                   Adicionar projeto
@@ -230,7 +249,6 @@ function Dashboard() {
                   Cadastre um novo trabalho.
                 </p>
               </div>
-
               <ArrowRight
                 size={18}
                 className="text-zinc-600 transition group-hover:translate-x-1 group-hover:text-blue-400"
@@ -244,7 +262,6 @@ function Dashboard() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
                 <Image size={19} />
               </div>
-
               <div className="flex-1">
                 <p className="text-sm font-medium text-zinc-100">
                   Enviar arquivos
@@ -253,7 +270,6 @@ function Dashboard() {
                   Gerencie imagens e vídeos.
                 </p>
               </div>
-
               <ArrowRight
                 size={18}
                 className="text-zinc-600 transition group-hover:translate-x-1 group-hover:text-violet-400"
@@ -267,7 +283,6 @@ function Dashboard() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-zinc-300">
                 <Settings size={19} />
               </div>
-
               <div className="flex-1">
                 <p className="text-sm font-medium text-zinc-100">
                   Configurações
@@ -276,7 +291,6 @@ function Dashboard() {
                   Ajuste as opções do sistema.
                 </p>
               </div>
-
               <ArrowRight
                 size={18}
                 className="text-zinc-600 transition group-hover:translate-x-1 group-hover:text-zinc-300"
@@ -318,39 +332,40 @@ function Dashboard() {
             </thead>
 
             <tbody className="divide-y divide-zinc-800">
-              {recentProjects.map(
-                ({
-                  id,
-                  title,
-                  category,
-                  status,
-                  statusVariant,
-                  updatedAt,
-                }) => (
-                  <tr
-                    key={id}
-                    className="transition hover:bg-zinc-900/70"
+              {!isLoading && recentProjects.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-10 text-center text-sm text-zinc-500"
                   >
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-medium text-zinc-100">
-                        {title}
-                      </p>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-zinc-400">
-                      {category}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Badge variant={statusVariant}>{status}</Badge>
-                    </td>
-
-                    <td className="px-6 py-4 text-right text-sm text-zinc-500">
-                      {updatedAt}
-                    </td>
-                  </tr>
-                ),
+                    Nenhum projeto cadastrado no novo Supabase.
+                  </td>
+                </tr>
               )}
+
+              {recentProjects.map((project) => (
+                <tr
+                  key={project.id}
+                  className="transition hover:bg-zinc-900/70"
+                >
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-zinc-100">
+                      {project.title}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-zinc-400">
+                    {project.category}
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge variant={project.statusVariant}>
+                      {project.status}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm text-zinc-500">
+                    {project.updatedAt}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
