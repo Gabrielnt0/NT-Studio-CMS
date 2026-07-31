@@ -17,7 +17,13 @@ import PortfolioProjectCard from "../components/PortfolioProjectCard";
 import {
   deleteProjectImage,
   uploadProjectImage,
+  uploadProjectSlideImage,
 } from "../services/portfolioProjectImages.service";
+import {
+  createProjectSlide,
+  deleteProjectSlide,
+  listProjectSlides,
+} from "../services/portfolioProjectSlides.service";
 
 
 const categories = [
@@ -30,10 +36,17 @@ const categories = [
 
 const emptyForm = {
   title: "",
+  slug: "",
   description: "",
+  longDescription: "",
+  client: "",
+  projectDate: "",
+  technologiesText: "",
   category: "Desenvolvimento",
   status: "Planejamento",
   featured: false,
+  isPublished: false,
+  displayOrder: 0,
   githubUrl: "",
   demoUrl: "",
   imageUrl: "",
@@ -60,6 +73,9 @@ function PortfolioPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  const [existingSlides, setExistingSlides] = useState([]);
+  const [selectedSlideFiles, setSelectedSlideFiles] = useState([]);
+  const [removedSlideIds, setRemovedSlideIds] = useState([]);
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -84,18 +100,28 @@ function PortfolioPage() {
     setSelectedImage(null);
     setImagePreview("");
     setRemoveExistingImage(false);
+    setExistingSlides([]);
+    setSelectedSlideFiles([]);
+    setRemovedSlideIds([]);
     setIsModalOpen(true);
   }
 
-  function openEditProjectModal(project) {
+  async function openEditProjectModal(project) {
     setEditingProjectId(project.id);
 
     setFormData({
       title: project.title,
+      slug: project.slug,
       description: project.description,
+      longDescription: project.longDescription,
+      client: project.client,
+      projectDate: project.projectDate,
+      technologiesText: project.technologies.join(", "),
       category: project.category,
       status: project.status,
       featured: project.featured,
+      isPublished: project.isPublished,
+      displayOrder: project.displayOrder,
       githubUrl: project.githubUrl,
       demoUrl: project.demoUrl,
       imageUrl: project.imageUrl ?? "",
@@ -104,6 +130,17 @@ function PortfolioPage() {
     setSelectedImage(null);
     setImagePreview(project.imageUrl ?? "");
     setRemoveExistingImage(false);
+    setSelectedSlideFiles([]);
+    setRemovedSlideIds([]);
+
+    try {
+      setExistingSlides(await listProjectSlides(project.id));
+    } catch (requestError) {
+      console.error("Erro ao carregar slides:", requestError);
+      setExistingSlides([]);
+      toast.error("Não foi possível carregar a galeria do projeto.");
+    }
+
     setIsModalOpen(true);
   }
 
@@ -115,6 +152,9 @@ function PortfolioPage() {
     setSelectedImage(null);
     setImagePreview("");
     setRemoveExistingImage(false);
+    setExistingSlides([]);
+    setSelectedSlideFiles([]);
+    setRemovedSlideIds([]);
   }
 
   function handleInputChange(event) {
@@ -177,7 +217,36 @@ function PortfolioPage() {
     setRemoveExistingImage(Boolean(formData.imageUrl));
   }
 
-function getStatusVariant(status) {
+  function handleSlideFilesChange(event) {
+    const files = Array.from(event.target.files ?? []);
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+    const validFiles = files.filter(
+      (file) =>
+        allowedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024,
+    );
+
+    if (validFiles.length !== files.length) {
+      toast.error("Alguns slides foram ignorados. Use PNG, JPG ou WEBP de até 5 MB.");
+    }
+
+    setSelectedSlideFiles((current) => [...current, ...validFiles]);
+    event.target.value = "";
+  }
+
+  function removeSelectedSlide(index) {
+    setSelectedSlideFiles((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
+  }
+
+  function removeExistingSlide(slideId) {
+    setExistingSlides((current) =>
+      current.filter((slide) => slide.id !== slideId),
+    );
+    setRemovedSlideIds((current) => [...current, slideId]);
+  }
+
+  function getStatusVariant(status) {
   const variants = {
     Publicado: "green",
     "Em desenvolvimento": "blue",
@@ -224,7 +293,15 @@ function getStatusVariant(status) {
       const normalizedProject = {
         ...formData,
         title: formData.title.trim(),
+        slug: formData.slug.trim(),
         description: formData.description.trim(),
+        longDescription: formData.longDescription.trim(),
+        client: formData.client.trim(),
+        technologies: formData.technologiesText
+          .split(",")
+          .map((technology) => technology.trim())
+          .filter(Boolean),
+        displayOrder: Number(formData.displayOrder) || 0,
         githubUrl: formData.githubUrl.trim(),
         demoUrl: formData.demoUrl.trim(),
         imageUrl,
@@ -232,9 +309,11 @@ function getStatusVariant(status) {
         updatedAt: "Agora",
       };
 
-      if (editingProjectId) {
-        await updateProject(editingProjectId, normalizedProject);
+      const savedProject = editingProjectId
+        ? await updateProject(editingProjectId, normalizedProject)
+        : await createProject(normalizedProject);
 
+      if (editingProjectId) {
         const oldImagePath = getProjectImagePath(formData.imageUrl);
         const imageWasChanged =
           selectedImage && formData.imageUrl && formData.imageUrl !== imageUrl;
@@ -246,12 +325,50 @@ function getStatusVariant(status) {
             console.error("Erro ao excluir imagem antiga:", deleteError);
           }
         }
-
-        toast.success("Projeto atualizado com sucesso.");
-      } else {
-        await createProject(normalizedProject);
-        toast.success("Projeto criado com sucesso.");
       }
+
+      for (const slideId of removedSlideIds) {
+        await deleteProjectSlide(slideId);
+      }
+
+      if (selectedSlideFiles.length > 0) {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+        if (!user) throw new Error("Usuário não autenticado.");
+
+        const startOrder = existingSlides.length;
+
+        for (const [index, file] of selectedSlideFiles.entries()) {
+          const uploadedSlide = await uploadProjectSlideImage(
+            file,
+            user.id,
+            savedProject.id,
+          );
+
+          try {
+            await createProjectSlide({
+              projectId: savedProject.id,
+              imageUrl: uploadedSlide.publicUrl,
+              storagePath: uploadedSlide.path,
+              altText: `${savedProject.title} — imagem ${startOrder + index + 1}`,
+              sortOrder: startOrder + index,
+            });
+          } catch (slideError) {
+            await deleteProjectImage(uploadedSlide.path);
+            throw slideError;
+          }
+        }
+      }
+
+      toast.success(
+        editingProjectId
+          ? "Projeto atualizado com sucesso."
+          : "Projeto criado com sucesso.",
+      );
 
       closeModal();
     } catch (requestError) {
@@ -485,6 +602,22 @@ function getStatusVariant(status) {
               />
             </div>
 
+            <Input
+              label="Slug"
+              name="slug"
+              value={formData.slug}
+              onChange={handleInputChange}
+              placeholder="ex.: nt-studio-cms"
+            />
+
+            <Input
+              label="Cliente"
+              name="client"
+              value={formData.client}
+              onChange={handleInputChange}
+              placeholder="Nome do cliente ou projeto próprio"
+            />
+
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-zinc-300">
                 Descrição
@@ -499,6 +632,51 @@ function getStatusVariant(status) {
                 required
                 className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Descrição completa
+              </label>
+
+              <textarea
+                name="longDescription"
+                value={formData.longDescription}
+                onChange={handleInputChange}
+                placeholder="Detalhe o contexto, processo, desafios e resultados do projeto..."
+                rows={7}
+                className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+              />
+            </div>
+
+            <Input
+              label="Data do projeto"
+              name="projectDate"
+              type="date"
+              value={formData.projectDate}
+              onChange={handleInputChange}
+            />
+
+            <Input
+              label="Ordem de exibição"
+              name="displayOrder"
+              type="number"
+              min="0"
+              value={formData.displayOrder}
+              onChange={handleInputChange}
+            />
+
+            <div className="md:col-span-2">
+              <Input
+                label="Tecnologias"
+                name="technologiesText"
+                value={formData.technologiesText}
+                onChange={handleInputChange}
+                placeholder="React, Supabase, Vite, Tailwind CSS"
+              />
+              <p className="mt-2 text-xs text-zinc-600">
+                Separe cada tecnologia por vírgula.
+              </p>
             </div>
 
             <div>
@@ -624,6 +802,83 @@ function getStatusVariant(status) {
                 </label>
               )}
             </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-zinc-300">
+                Galeria do projeto
+              </label>
+
+              <input
+                id="project-slides"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={handleSlideFilesChange}
+                className="hidden"
+              />
+
+              <label
+                htmlFor="project-slides"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-4 py-5 text-sm font-medium text-zinc-300 transition hover:border-blue-500 hover:bg-blue-500/5"
+              >
+                <ImagePlus size={19} />
+                Adicionar imagens à galeria
+              </label>
+
+              {(existingSlides.length > 0 || selectedSlideFiles.length > 0) && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {existingSlides.map((slide) => (
+                    <div
+                      key={slide.id}
+                      className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
+                    >
+                      <img
+                        src={slide.imageUrl}
+                        alt={slide.altText || "Slide do projeto"}
+                        className="h-32 w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeExistingSlide(slide.id)}
+                        className="w-full border-t border-zinc-800 px-3 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
+                      >
+                        Remover slide
+                      </button>
+                    </div>
+                  ))}
+
+                  {selectedSlideFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.lastModified}-${index}`}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950 p-3"
+                    >
+                      <p className="truncate text-sm text-zinc-300">{file.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedSlide(index)}
+                        className="mt-2 text-sm font-medium text-red-400 transition hover:text-red-300"
+                      >
+                        Remover seleção
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-3 md:col-span-2">
+              <input
+                type="checkbox"
+                name="isPublished"
+                checked={formData.isPublished}
+                onChange={handleInputChange}
+                className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+              />
+
+              <span className="text-sm text-zinc-300">
+                Publicar este projeto no site
+              </span>
+            </label>
 
             <label className="flex cursor-pointer items-center gap-3 md:col-span-2">
               <input

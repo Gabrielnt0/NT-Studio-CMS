@@ -1,16 +1,12 @@
-# Sprint 9.1 — Perfil completo
+# Sprint 9.2 — Projetos completos
 
-Copie o conteúdo da pasta `modified/` para a raiz do projeto `portfolio-CMS`,
-substituindo os arquivos existentes.
+## Ordem obrigatória
 
-Este pacote adiciona ao CMS:
-
-- Instagram
-- YouTube
-- Twitter / X
-- Controle de perfil público (`is_public`)
-
-Depois execute:
+1. No Supabase, abra **SQL Editor**.
+2. Execute o arquivo:
+   `supabase/migrations/20260731_03_portfolio_projects_complete.sql`
+3. Somente depois copie `modified/` para a raiz do projeto, substituindo os arquivos.
+4. Execute:
 
 ```powershell
 npm run lint
@@ -18,4 +14,17 @@ npm run build
 npm run dev
 ```
 
-As colunas já existem na tabela `profiles`, portanto este pacote não inclui SQL.
+## Novos campos
+
+- slug
+- descrição completa
+- cliente
+- data do projeto
+- tecnologias
+- publicação independente do status
+- ordem de exibição
+- galeria de slides
+
+## Observação
+
+Este pacote não altera a RPC pública `get_public_portfolio_content`, porque o SQL atual dela não foi fornecido. O CMS e o banco ficam preparados; a RPC será auditada na etapa seguinte.
