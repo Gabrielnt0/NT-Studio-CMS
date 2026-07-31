@@ -23,7 +23,7 @@ export function useAnalyticsWorkspace(projectId, metrics, projectName) {
   const snapshotKey = "portfolio-analytics-snapshots";
   const [widgets, setWidgets] = useState(() => readJson(`${storageKey}:widgets`, DEFAULT_WIDGETS));
   const [branding, setBranding] = useState(() => readJson(`${storageKey}:branding`, DEFAULT_BRANDING));
-  const snapshots = useMemo(() => readJson(snapshotKey, {}), [projectId]);
+  const snapshots = useMemo(() => readJson(snapshotKey, {}), []);
 
   useEffect(() => {
     if (!projectId || !metrics) return;

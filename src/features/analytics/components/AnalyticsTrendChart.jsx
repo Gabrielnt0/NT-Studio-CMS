@@ -64,7 +64,7 @@ export default function AnalyticsTrendChart({
   const [metric, setMetric] = useState("activeUsers");
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const gradientId = useId().replace(/:/g, "");
-  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const selected = METRICS.find((item) => item.key === metric) ?? METRICS[0];
   const width = 960;
   const height = 320;

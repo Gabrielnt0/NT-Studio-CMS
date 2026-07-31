@@ -1,12 +1,8 @@
 # Changelog
 
-## Sprint Migration Engine 1.1
+## Lint Fix
 
-- Seleção individual das tabelas antes da migração.
-- Confirmação antes de migrar ou restaurar dados.
-- Validação e pré-visualização de backups JSON.
-- Resumo detalhado de registros por tabela.
-- Mensagens de sucesso, erro e progresso mais claras.
-- Exportação de backup com confirmação visual.
-- Aviso explícito de que arquivos físicos do Storage não são copiados nesta etapa.
-- Migração parcial sem exigir que todas as tabelas antigas existam.
+- Corrigido `react-refresh/only-export-components` em `AuthContext.jsx` sem alterar a API pública atual.
+- Removida prop não utilizada de `AnalyticsAudienceDevices.jsx`.
+- Estabilizado `safeRows` com `useMemo` em `AnalyticsTrendChart.jsx`.
+- Removida dependência desnecessária de `projectId` em `useAnalyticsWorkspace.js`.
