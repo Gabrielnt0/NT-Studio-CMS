@@ -1,12 +1,22 @@
-# Sprint 9.2 — Projetos completos
+# Sprint A1 — Aparência do Portfolio CMS
+
+Este pacote transfere o motor de temas do ONRONT Studio para o Portfolio CMS pessoal, removendo workspaces e arquitetura SaaS.
 
 ## Ordem obrigatória
 
-1. No Supabase, abra **SQL Editor**.
-2. Execute o arquivo:
-   `supabase/migrations/20260731_03_portfolio_projects_complete.sql`
-3. Somente depois copie `modified/` para a raiz do projeto, substituindo os arquivos.
-4. Execute:
+### 1. Execute o SQL
+
+Abra no pacote:
+
+`modified/supabase/migrations/20260731_04_personal_portfolio_theme_engine.sql`
+
+Copie o conteúdo para o SQL Editor do Supabase e execute.
+
+### 2. Copie os arquivos
+
+Copie todo o conteúdo de `modified/` para a raiz do projeto `portfolio-CMS`, substituindo os arquivos existentes.
+
+### 3. Valide
 
 ```powershell
 npm run lint
@@ -14,17 +24,22 @@ npm run build
 npm run dev
 ```
 
-## Novos campos
+## Nova rota
 
-- slug
-- descrição completa
-- cliente
-- data do projeto
-- tecnologias
-- publicação independente do status
-- ordem de exibição
-- galeria de slides
+`/appearance`
 
-## Observação
+## Funcionalidades
 
-Este pacote não altera a RPC pública `get_public_portfolio_content`, porque o SQL atual dela não foi fornecido. O CMS e o banco ficam preparados; a RPC será auditada na etapa seguinte.
+- presets Midnight, Emerald, Violet e Light;
+- cores principais e de superfície;
+- tipografia;
+- bordas;
+- sombras;
+- animações;
+- pré-visualização;
+- publicação no Supabase;
+- RPC pública `get_public_portfolio_theme` compatível com o site.
+
+## Segurança
+
+Não foram incluídos workspaces, membros, tenants, credenciais ou identidade ONRONT.

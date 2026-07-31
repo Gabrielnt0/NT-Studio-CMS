@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Image,
   LayoutDashboard,
+  Palette,
   Search,
   Settings,
   Sparkles,
@@ -23,6 +24,7 @@ const navigationItems = [
   { label: "Formação", path: "/education", icon: GraduationCap },
   { label: "Habilidades", path: "/skills", icon: Wrench },
   { label: "SEO", path: "/seo", icon: Search },
+  { label: "Aparência", path: "/appearance", icon: Palette },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];
 
