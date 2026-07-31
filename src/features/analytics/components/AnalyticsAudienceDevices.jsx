@@ -1,0 +1,1 @@
+export default function AnalyticsAudienceDevices({metrics={}}){return <section className="rounded-2xl border border-zinc-800 p-5"><h2 className="font-semibold">Dispositivos & Ecrãs</h2><p className='text-sm text-zinc-400'>Preparado para mostrar resoluções, sistemas operativos e dispositivos.</p></section>}

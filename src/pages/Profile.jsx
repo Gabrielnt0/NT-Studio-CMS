@@ -1,5 +1,5 @@
-function Profile() {
-  return <h1 className="text-3xl font-bold text-white">Perfil</h1>;
-}
+import ProfilePage from "../features/profile/pages/ProfilePage";
 
-export default Profile;
+export default function Profile() {
+  return <ProfilePage />;
+}

@@ -1,5 +1,5 @@
-function Experiences() {
-  return <h1 className="text-3xl font-bold text-white">Experiências</h1>;
-}
+import ExperiencesPage from "../features/experiences/pages/ExperiencesPage";
 
-export default Experiences;
+export default function Experiences() {
+  return <ExperiencesPage />;
+}

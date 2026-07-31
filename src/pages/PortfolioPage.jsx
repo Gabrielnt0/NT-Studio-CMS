@@ -1,70 +1,24 @@
 import {
-  ExternalLink,
   ImagePlus,
-  MoreHorizontal,
-  Pencil,
   Plus,
   Search,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import Modal from "../components/feedback/Modal";
-import Badge from "../components/ui/Badge";
-import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
-import Input from "../components/ui/Input";
+import Modal from "../../../components/feedback/Modal";
+import Badge from "../../../components/ui/Badge";
+import Button from "../../../components/ui/Button";
+import Card from "../../../components/ui/Card";
+import Input from "../../../components/ui/Input";
+import { supabase } from "../../../services/supabase";
+import { usePortfolioProjects } from "../hooks/usePortfolioProjects";
+import PortfolioProjectCard from "../components/PortfolioProjectCard";
+import {
+  deleteProjectImage,
+  uploadProjectImage,
+} from "../services/portfolioProjectImages.service";
 
-const initialProjects = [
-  {
-    id: 1,
-    title: "NT Studio CMS",
-    description: "Painel administrativo para gerenciamento do portfólio.",
-    category: "Desenvolvimento",
-    status: "Em desenvolvimento",
-    statusVariant: "blue",
-    featured: true,
-    updatedAt: "Hoje",
-    githubUrl: "https://github.com/Gabrielnt0/NT-Studio-CMS",
-    demoUrl: "",
-  },
-  {
-    id: 2,
-    title: "Portfólio Gabriel",
-    description: "Portfólio profissional com projetos e experiências.",
-    category: "Portfólio",
-    status: "Publicado",
-    statusVariant: "green",
-    featured: true,
-    updatedAt: "Há 2 dias",
-    githubUrl: "https://github.com/Gabrielnt0/portfolio",
-    demoUrl: "https://gabrielnt0.github.io/portfolio/",
-  },
-  {
-    id: 3,
-    title: "Affilint",
-    description: "Plataforma para organização e divulgação de links.",
-    category: "Plataforma",
-    status: "Planejamento",
-    statusVariant: "yellow",
-    featured: false,
-    updatedAt: "Há 5 dias",
-    githubUrl: "",
-    demoUrl: "",
-  },
-  {
-    id: 4,
-    title: "TOONNT",
-    description: "Universo de conteúdo infantil e produção audiovisual.",
-    category: "Conteúdo",
-    status: "Publicado",
-    statusVariant: "green",
-    featured: true,
-    updatedAt: "Há 1 semana",
-    githubUrl: "",
-    demoUrl: "",
-  },
-];
 
 const categories = [
   "Todos",
@@ -82,16 +36,30 @@ const emptyForm = {
   featured: false,
   githubUrl: "",
   demoUrl: "",
+  imageUrl: "",
 };
 
-function Projects() {
-  const [projects, setProjects] = useState(initialProjects);
+function PortfolioPage() {
+  const {
+    projects,
+    isLoading,
+    isMutating,
+    error,
+    reloadProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+  } = usePortfolioProjects();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [projectToDelete, setProjectToDelete] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -113,6 +81,9 @@ function Projects() {
   function openNewProjectModal() {
     setEditingProjectId(null);
     setFormData(emptyForm);
+    setSelectedImage(null);
+    setImagePreview("");
+    setRemoveExistingImage(false);
     setIsModalOpen(true);
   }
 
@@ -127,8 +98,12 @@ function Projects() {
       featured: project.featured,
       githubUrl: project.githubUrl,
       demoUrl: project.demoUrl,
+      imageUrl: project.imageUrl ?? "",
     });
 
+    setSelectedImage(null);
+    setImagePreview(project.imageUrl ?? "");
+    setRemoveExistingImage(false);
     setIsModalOpen(true);
   }
 
@@ -136,6 +111,10 @@ function Projects() {
     setIsModalOpen(false);
     setEditingProjectId(null);
     setFormData(emptyForm);
+
+    setSelectedImage(null);
+    setImagePreview("");
+    setRemoveExistingImage(false);
   }
 
   function handleInputChange(event) {
@@ -147,56 +126,149 @@ function Projects() {
     }));
   }
 
-  function getStatusVariant(status) {
-    const variants = {
-      Publicado: "green",
-      "Em desenvolvimento": "blue",
-      Planejamento: "yellow",
-      Rascunho: "zinc",
-    };
+  function handleImageChange(event) {
+    const file = event.target.files?.[0];
 
-    return variants[status] ?? "zinc";
-  }
+    if (!file) return;
 
-  function handleSubmit(event) {
-    event.preventDefault();
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
 
-    const normalizedProject = {
-      ...formData,
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      githubUrl: formData.githubUrl.trim(),
-      demoUrl: formData.demoUrl.trim(),
-      statusVariant: getStatusVariant(formData.status),
-      updatedAt: "Agora",
-    };
-
-    if (editingProjectId) {
-      setProjects((currentProjects) =>
-        currentProjects.map((project) =>
-          project.id === editingProjectId
-            ? {
-                ...project,
-                ...normalizedProject,
-              }
-            : project,
-        ),
-      );
-
-      toast.success("Projeto atualizado com sucesso.");
-    } else {
-      setProjects((currentProjects) => [
-        {
-          id: Date.now(),
-          ...normalizedProject,
-        },
-        ...currentProjects,
-      ]);
-
-      toast.success("Projeto criado com sucesso.");
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Escolha uma imagem PNG, JPG ou WEBP.");
+      event.target.value = "";
+      return;
     }
 
-    closeModal();
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setRemoveExistingImage(false);
+  }
+
+  function getProjectImagePath(imageUrl) {
+    if (!imageUrl) return "";
+
+    const marker = "/storage/v1/object/public/portfolio-projects/";
+    const markerIndex = imageUrl.indexOf(marker);
+
+    if (markerIndex === -1) return "";
+
+    return decodeURIComponent(
+      imageUrl.slice(markerIndex + marker.length).split("?")[0],
+    );
+  }
+
+  function handleRemoveImage() {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setSelectedImage(null);
+    setImagePreview("");
+    setRemoveExistingImage(Boolean(formData.imageUrl));
+  }
+
+function getStatusVariant(status) {
+  const variants = {
+    Publicado: "green",
+    "Em desenvolvimento": "blue",
+    Planejamento: "yellow",
+    Rascunho: "zinc",
+  };
+
+  return variants[status] ?? "zinc";
+}
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    let uploadedImagePath = "";
+
+    try {
+      let imageUrl = formData.imageUrl || "";
+
+      if (selectedImage) {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          throw userError;
+        }
+
+        if (!user) {
+          throw new Error("Usuário não autenticado.");
+        }
+
+        const uploadedImage = await uploadProjectImage(
+          selectedImage,
+          user.id,
+        );
+
+        uploadedImagePath = uploadedImage.path;
+        imageUrl = uploadedImage.publicUrl;
+      } else if (removeExistingImage) {
+        imageUrl = "";
+      }
+
+      const normalizedProject = {
+        ...formData,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        githubUrl: formData.githubUrl.trim(),
+        demoUrl: formData.demoUrl.trim(),
+        imageUrl,
+        statusVariant: getStatusVariant(formData.status),
+        updatedAt: "Agora",
+      };
+
+      if (editingProjectId) {
+        await updateProject(editingProjectId, normalizedProject);
+
+        const oldImagePath = getProjectImagePath(formData.imageUrl);
+        const imageWasChanged =
+          selectedImage && formData.imageUrl && formData.imageUrl !== imageUrl;
+
+        if ((imageWasChanged || removeExistingImage) && oldImagePath) {
+          try {
+            await deleteProjectImage(oldImagePath);
+          } catch (deleteError) {
+            console.error("Erro ao excluir imagem antiga:", deleteError);
+          }
+        }
+
+        toast.success("Projeto atualizado com sucesso.");
+      } else {
+        await createProject(normalizedProject);
+        toast.success("Projeto criado com sucesso.");
+      }
+
+      closeModal();
+    } catch (requestError) {
+      console.error("Erro ao salvar projeto:", requestError);
+
+      if (uploadedImagePath) {
+        try {
+          await deleteProjectImage(uploadedImagePath);
+        } catch (cleanupError) {
+          console.error("Erro ao limpar upload não utilizado:", cleanupError);
+        }
+      }
+
+      toast.error(
+        requestError?.message || "Não foi possível salvar o projeto.",
+      );
+    }
   }
 
   function openDeleteConfirmation(project) {
@@ -207,20 +279,45 @@ function Projects() {
     setProjectToDelete(null);
   }
 
-  function handleDeleteProject() {
+  async function handleDeleteProject() {
     if (!projectToDelete) {
       return;
     }
 
-    setProjects((currentProjects) =>
-      currentProjects.filter(
-        (project) => project.id !== projectToDelete.id,
-      ),
-    );
+    try {
+      await deleteProject(projectToDelete.id);
 
-    toast.success(`"${projectToDelete.title}" foi excluído.`);
+      const imagePath = getProjectImagePath(projectToDelete.imageUrl);
 
-    closeDeleteConfirmation();
+      if (imagePath) {
+        try {
+          await deleteProjectImage(imagePath);
+        } catch (deleteImageError) {
+          console.error(
+            "O projeto foi excluído, mas a imagem não foi removida:",
+            deleteImageError,
+          );
+        }
+      }
+
+      toast.success(`"${projectToDelete.title}" foi excluído.`);
+      closeDeleteConfirmation();
+    } catch (requestError) {
+      console.error(requestError);
+      toast.error("Não foi possível excluir o projeto.");
+    }
+  }
+
+
+  function openProject(project) {
+    const projectUrl = project.demoUrl || project.githubUrl;
+
+    if (!projectUrl) {
+      toast.error("Este projeto ainda não possui um link cadastrado.");
+      return;
+    }
+
+    window.open(projectUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -288,8 +385,8 @@ function Projects() {
           </div>
         </Card>
 
-        <Card>
-          <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-5">
+        <section className="space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold text-white">Todos os projetos</h2>
 
@@ -303,112 +400,52 @@ function Projects() {
             <Badge variant="zinc">{projects.length} cadastrados</Badge>
           </div>
 
-          {filteredProjects.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left">
-                <thead>
-                  <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-600">
-                    <th className="px-6 py-4 font-medium">Projeto</th>
-                    <th className="px-6 py-4 font-medium">Categoria</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    <th className="px-6 py-4 font-medium">Destaque</th>
-                    <th className="px-6 py-4 font-medium">Atualização</th>
-                    <th className="px-6 py-4 text-right font-medium">Ações</th>
-                  </tr>
-                </thead>
+          {isLoading ? (
+            <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-700 border-t-blue-500" />
 
-                <tbody className="divide-y divide-zinc-800">
-                  {filteredProjects.map((project) => (
-                    <tr
-                      key={project.id}
-                      className="transition hover:bg-zinc-900/70"
-                    >
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-sm font-bold text-blue-400">
-                            {project.title.slice(0, 2).toUpperCase()}
-                          </div>
+              <p className="mt-4 text-sm font-medium text-zinc-300">
+                Carregando projetos...
+              </p>
+            </Card>
+          ) : error ? (
+            <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
+                <Search size={24} />
+              </div>
 
-                          <div>
-                            <p className="font-medium text-zinc-100">
-                              {project.title}
-                            </p>
+              <h3 className="mt-4 font-semibold text-white">
+                Não foi possível carregar os projetos
+              </h3>
 
-                            <p className="mt-1 max-w-sm text-sm text-zinc-500">
-                              {project.description}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
+              <p className="mt-2 max-w-md text-sm text-zinc-500">
+                Verifique sua conexão e tente novamente.
+              </p>
 
-                      <td className="px-6 py-5 text-sm text-zinc-400">
-                        {project.category}
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <Badge variant={project.statusVariant}>
-                          {project.status}
-                        </Badge>
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <Badge variant={project.featured ? "purple" : "zinc"}>
-                          {project.featured ? "Sim" : "Não"}
-                        </Badge>
-                      </td>
-
-                      <td className="px-6 py-5 text-sm text-zinc-500">
-                        {project.updatedAt}
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Abrir ${project.title}`}
-                            title="Abrir projeto"
-                          >
-                            <ExternalLink size={17} />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditProjectModal(project)}
-                            aria-label={`Editar ${project.title}`}
-                            title="Editar projeto"
-                          >
-                            <Pencil size={17} />
-                          </Button>
-
-                          <Button
-                            variant="danger"
-                            size="icon"
-                            onClick={() => openDeleteConfirmation(project)}
-                            aria-label={`Excluir ${project.title}`}
-                            title="Excluir projeto"
-                          >
-                            <Trash2 size={17} />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Mais opções para ${project.title}`}
-                            title="Mais opções"
-                          >
-                            <MoreHorizontal size={18} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={reloadProjects}
+                className="mt-5"
+              >
+                Tentar novamente
+              </Button>
+            </Card>
+          ) : filteredProjects.length > 0 ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {filteredProjects.map((project) => (
+                <PortfolioProjectCard
+                  key={project.id}
+                  project={project}
+                  statusVariant={getStatusVariant(project.status)}
+                  onOpen={openProject}
+                  onEdit={openEditProjectModal}
+                  onDelete={openDeleteConfirmation}
+                />
+              ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+            <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-zinc-400">
                 <Search size={24} />
               </div>
@@ -420,9 +457,9 @@ function Projects() {
               <p className="mt-2 max-w-md text-sm text-zinc-500">
                 Tente alterar o termo pesquisado ou selecione outra categoria.
               </p>
-            </div>
+            </Card>
           )}
-        </Card>
+        </section>
       </div>
 
       <Modal
@@ -525,20 +562,67 @@ function Projects() {
                 Imagem de capa
               </label>
 
-              <button
-                type="button"
-                className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-6 py-8 text-center transition hover:border-blue-500 hover:bg-blue-500/5"
-              >
-                <ImagePlus size={28} className="text-zinc-500" />
+              <input
+                id="project-image"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
 
-                <span className="mt-3 text-sm font-medium text-zinc-300">
-                  Selecionar imagem
-                </span>
+              {imagePreview ? (
+                <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+                  <img
+                    src={imagePreview}
+                    alt="Prévia da imagem de capa"
+                    className="h-56 w-full object-cover"
+                  />
 
-                <span className="mt-1 text-xs text-zinc-600">
-                  PNG, JPG ou WEBP
-                </span>
-              </button>
+                  <div className="flex flex-col gap-3 border-t border-zinc-800 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">
+                        {selectedImage?.name || "Imagem atual do projeto"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Imagem selecionada para este projeto.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <label
+                        htmlFor="project-image"
+                        className="cursor-pointer rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+                      >
+                        Trocar imagem
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/20"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <label
+                  htmlFor="project-image"
+                  className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-6 py-8 text-center transition hover:border-blue-500 hover:bg-blue-500/5"
+                >
+                  <ImagePlus size={28} className="text-zinc-500" />
+
+                  <span className="mt-3 text-sm font-medium text-zinc-300">
+                    Selecionar imagem
+                  </span>
+
+                  <span className="mt-1 text-xs text-zinc-600">
+                    PNG, JPG ou WEBP — máximo de 5 MB
+                  </span>
+                </label>
+              )}
             </div>
 
             <label className="flex cursor-pointer items-center gap-3 md:col-span-2">
@@ -561,8 +645,15 @@ function Projects() {
               Cancelar
             </Button>
 
-            <Button type="submit">
-              {editingProjectId ? "Salvar alterações" : "Criar projeto"}
+            <Button
+            type="submit"
+           disabled={isMutating}
+          >
+              {isMutating
+                ? "Salvando..."
+                : editingProjectId
+                  ? "Salvar alterações"
+                  : "Criar projeto"}
             </Button>
           </footer>
         </form>
@@ -606,10 +697,11 @@ function Projects() {
             Cancelar
           </Button>
 
-          <Button
-            type="button"
-            variant="danger"
-            onClick={handleDeleteProject}
+           <Button
+           type="button"
+           variant="danger"
+           disabled={isMutating}
+           onClick={handleDeleteProject}
           >
             <Trash2 size={17} />
             Excluir projeto
@@ -620,4 +712,4 @@ function Projects() {
   );
 }
 
-export default Projects;
+export default PortfolioPage;

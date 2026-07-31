@@ -1,5 +1,7 @@
+import MediaPage from "../features/media/pages/MediaPage";
+
 function Media() {
-  return <h1 className="text-3xl font-bold text-white">Mídia</h1>;
+  return <MediaPage />;
 }
 
 export default Media;

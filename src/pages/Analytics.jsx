@@ -1,5 +1,5 @@
-function Analytics() {
-  return <h1 className="text-3xl font-bold text-white">Analytics</h1>;
-}
+import AnalyticsPage from "../features/analytics/pages/AnalyticsPage";
 
-export default Analytics;
+export default function Analytics() {
+  return <AnalyticsPage />;
+}

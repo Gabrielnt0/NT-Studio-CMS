@@ -1,5 +1,5 @@
-function Seo() {
-  return <h1 className="text-3xl font-bold text-white">SEO</h1>;
-}
+import SeoPage from "../features/seo/pages/SeoPage";
 
-export default Seo;
+export default function Seo() {
+  return <SeoPage />;
+}

@@ -119,7 +119,7 @@ function Dashboard() {
         </div>
 
         <Link
-          to="/projects"
+          to="/portfolio"
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
         >
           <Plus size={18} />
@@ -215,7 +215,7 @@ function Dashboard() {
 
           <div className="space-y-3 p-5">
             <Link
-              to="/projects"
+              to="/portfolio"
               className="group flex items-center gap-4 rounded-xl border border-zinc-800 p-4 transition hover:border-blue-500/50 hover:bg-blue-500/5"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
@@ -296,7 +296,7 @@ function Dashboard() {
           </div>
 
           <Link
-            to="/projects"
+            to="/portfolio"
             className="flex items-center gap-1 text-sm font-medium text-blue-400 transition hover:text-blue-300"
           >
             Ver todos

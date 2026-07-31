@@ -1,0 +1,2 @@
+[functions.google-analytics-connection-test]
+verify_jwt = true
