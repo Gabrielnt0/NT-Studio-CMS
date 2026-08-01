@@ -6,6 +6,7 @@ import {
   Image,
   LayoutDashboard,
   LayoutTemplate,
+  MonitorSmartphone,
   Palette,
   Search,
   Settings,
@@ -27,6 +28,7 @@ const navigationItems = [
   { label: "SEO", path: "/seo", icon: Search },
   { label: "Aparência", path: "/appearance", icon: Palette },
   { label: "Site Builder", path: "/site-builder", icon: LayoutTemplate },
+  { label: "Editor Visual", path: "/visual-editor", icon: MonitorSmartphone },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];
 

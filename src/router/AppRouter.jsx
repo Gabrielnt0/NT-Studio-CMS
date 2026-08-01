@@ -20,6 +20,7 @@ const Settings = lazy(() => import("../pages/Settings"));
 const Skills = lazy(() => import("../pages/Skills"));
 const Theme = lazy(() => import("../pages/Theme"));
 const SiteBuilder = lazy(() => import("../pages/SiteBuilder"));
+const VisualEditor = lazy(() => import("../pages/VisualEditor"));
 
 function PageLoader() {
   return (
@@ -42,6 +43,8 @@ function AppRouter() {
           <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/visual-editor" element={<VisualEditor />} />
+
             <Route element={<MainLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="/portfolio" element={<Portfolio />} />

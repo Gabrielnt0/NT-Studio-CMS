@@ -1,6 +1,7 @@
-import { Bell, LogOut, Menu, Search } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 function getInitials(email) {
@@ -55,37 +56,24 @@ function Header({ onOpenMenu }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 md:flex">
-          <Search size={17} className="text-zinc-500" />
-          <input
-            type="search"
-            placeholder="Pesquisar..."
-            className="w-44 bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
-          />
-        </div>
-
-        <button
-          type="button"
-          className="relative rounded-lg border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 transition hover:text-white"
-          aria-label="Notificações"
+        <div
+          className="hidden text-right xl:block"
+          title={user?.email ?? "Administrador"}
         >
-          <Bell size={19} />
-        </button>
-
-        <div className="hidden text-right xl:block" title={user?.email ?? "Administrador"}>
           <p className="max-w-52 truncate text-sm font-medium text-zinc-200">
             {user?.email ?? "Administrador"}
           </p>
           <p className="text-xs text-zinc-500">Administrador</p>
         </div>
 
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white"
-          aria-label="Perfil do administrador"
-          title={user?.email ?? "Administrador"}
+        <Link
+          to="/profile"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+          aria-label="Abrir perfil"
+          title="Abrir perfil"
         >
           {getInitials(user?.email)}
-        </div>
+        </Link>
 
         <button
           type="button"
