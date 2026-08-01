@@ -11,6 +11,7 @@ import {
   updateMedia,
 } from "../services/media.service";
 import { deleteMediaFile } from "../services/mediaStorage.service";
+import { assertMediaCanBeDeleted } from "../services/mediaUsage.service";
 
 export function useMedia() {
   const [media, setMedia] = useState([]);
@@ -86,6 +87,9 @@ export function useMedia() {
     setIsMutating(true);
 
     try {
+      // Impede links quebrados no portfólio, SEO, perfil ou temas.
+      await assertMediaCanBeDeleted(item);
+
       /*
        * O arquivo é removido primeiro para evitar que
        * arquivos órfãos permaneçam no Storage.

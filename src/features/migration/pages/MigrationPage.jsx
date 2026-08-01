@@ -43,7 +43,14 @@ export default function MigrationPage() {
       <div className="flex items-start gap-3"><TriangleAlert size={19} className="mt-0.5 shrink-0" /><p>Esta etapa migra registros do banco. Arquivos físicos do Storage não são copiados automaticamente; URLs antigas continuarão funcionando enquanto o projeto antigo permanecer ativo.</p></div>
     </div>
 
-    <MigrationSourceCard source={migration.source} onChange={migration.updateSource} onInspect={migration.inspect} loading={migration.isInspecting} />
+    <MigrationSourceCard
+      source={migration.source}
+      onChange={migration.updateSource}
+      onInspect={migration.inspect}
+      loading={migration.isInspecting}
+      credentialsConfirmed={migration.credentialsConfirmed}
+      onCredentialsConfirmed={migration.setCredentialsConfirmed}
+    />
 
     {migration.error && <div className="rounded-xl border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-300">{migration.error}</div>}
     {migration.notice && <div className="rounded-xl border border-blue-900/60 bg-blue-950/30 px-4 py-3 text-sm text-blue-200">{migration.notice}</div>}

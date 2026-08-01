@@ -33,6 +33,105 @@ function sanitizeUrl(value) {
   return value.trim().replace(/\/$/, "");
 }
 
+function decodeJwtPayload(value) {
+  try {
+    const parts = value.split(".");
+    if (parts.length !== 3) return null;
+
+    const normalized = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function validateSourceUrl(value) {
+  let parsed;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Informe uma URL válida do projeto Supabase antigo.");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("A URL do Supabase antigo precisa usar HTTPS.");
+  }
+
+  if (
+    parsed.hostname !== "localhost" &&
+    !parsed.hostname.endsWith(".supabase.co")
+  ) {
+    throw new Error(
+      "A URL informada não parece pertencer a um projeto Supabase.",
+    );
+  }
+
+  return parsed.origin;
+}
+
+function validatePublicKey(value) {
+  const key = value.trim();
+
+  if (!key) {
+    throw new Error("Informe a chave pública do Supabase antigo.");
+  }
+
+  if (
+    key.startsWith("sb_secret_") ||
+    /service[_-]?role/i.test(key)
+  ) {
+    throw new Error(
+      "Não use uma chave secreta ou service_role. Informe apenas a Publishable Key ou a anon key pública.",
+    );
+  }
+
+  if (key.startsWith("sb_publishable_")) return key;
+
+  const payload = decodeJwtPayload(key);
+
+  if (payload?.role === "service_role") {
+    throw new Error(
+      "A chave informada é service_role e não pode ser usada nesta tela.",
+    );
+  }
+
+  if (payload?.role !== "anon") {
+    throw new Error(
+      "A chave não foi reconhecida como Publishable Key ou anon key pública.",
+    );
+  }
+
+  return key;
+}
+
+export function validateLegacySource({
+  url,
+  key,
+  email,
+  password,
+}) {
+  if (!email?.trim() || !password) {
+    throw new Error(
+      "Preencha o e-mail e a senha do usuário do Supabase antigo.",
+    );
+  }
+
+  return {
+    url: validateSourceUrl(url?.trim() || ""),
+    key: validatePublicKey(key || ""),
+    email: email.trim(),
+    password,
+  };
+}
+
 function pickAllowedColumns(row, target) {
   const allowed = new Set(ALLOWED_COLUMNS[target] ?? []);
   return Object.fromEntries(
@@ -64,40 +163,71 @@ async function getDestinationUser() {
   return data.user;
 }
 
-export async function inspectLegacySource({ url, key, email, password }) {
-  if (!url || !key || !email || !password) {
-    throw new Error("Preencha URL, chave pública, e-mail e senha do Supabase antigo.");
-  }
+export async function inspectLegacySource(source) {
+  const credentials = validateLegacySource(source);
 
-  const sourceClient = createClient(sanitizeUrl(url), key.trim(), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const sourceClient = createClient(
+    sanitizeUrl(credentials.url),
+    credentials.key,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    },
+  );
 
-  const { error: signInError } = await sourceClient.auth.signInWithPassword({
-    email: email.trim(),
-    password,
-  });
-  if (signInError) throw signInError;
+  try {
+    const { error: signInError } =
+      await sourceClient.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
 
-  const results = {};
-
-  for (const config of SOURCE_TABLES) {
-    const { data, error } = await sourceClient.from(config.source).select("*");
-
-    if (error) {
-      const missingTable = error.code === "42P01" || /does not exist|schema cache/i.test(error.message ?? "");
-      if (missingTable) {
-        results[config.target] = { ...config, rows: [], warning: `Tabela ${config.source} não encontrada.` };
-        continue;
-      }
-      throw new Error(`${config.source}: ${error.message}`);
+    if (signInError) {
+      throw new Error(
+        `Não foi possível autenticar no Supabase antigo: ${signInError.message}`,
+      );
     }
 
-    results[config.target] = { ...config, rows: data ?? [], warning: null };
-  }
+    const results = {};
 
-  await sourceClient.auth.signOut();
-  return results;
+    for (const config of SOURCE_TABLES) {
+      const { data, error } = await sourceClient
+        .from(config.source)
+        .select("*");
+
+      if (error) {
+        const missingTable =
+          error.code === "42P01" ||
+          /does not exist|schema cache/i.test(error.message ?? "");
+
+        if (missingTable) {
+          results[config.target] = {
+            ...config,
+            rows: [],
+            warning: `Tabela ${config.source} não encontrada.`,
+          };
+          continue;
+        }
+
+        throw new Error(`${config.source}: ${error.message}`);
+      }
+
+      results[config.target] = {
+        ...config,
+        rows: data ?? [],
+        warning: null,
+      };
+    }
+
+    return results;
+  } finally {
+    // A sessão do projeto antigo nunca é persistida e é encerrada mesmo
+    // quando uma consulta falha.
+    await sourceClient.auth.signOut().catch(() => {});
+  }
 }
 
 async function migrateSingleton(target, rows, userId) {

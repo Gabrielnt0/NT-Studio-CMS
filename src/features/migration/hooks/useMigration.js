@@ -11,6 +11,7 @@ import {
 
 const initialSource = { url: "", key: "", email: "", password: "" };
 const initialSelection = Object.fromEntries(SOURCE_TABLES.map(({ target }) => [target, true]));
+const MAX_BACKUP_FILE_SIZE = 10 * 1024 * 1024;
 
 export default function useMigration() {
   const [source, setSource] = useState(initialSource);
@@ -24,6 +25,7 @@ export default function useMigration() {
   const [isInspecting, setIsInspecting] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [credentialsConfirmed, setCredentialsConfirmed] = useState(false);
 
   const totals = useMemo(() => {
     if (!inspection) return { tables: 0, rows: 0, selectedTables: 0, selectedRows: 0 };
@@ -48,6 +50,15 @@ export default function useMigration() {
     setSource((current) => ({ ...current, [field]: value }));
   }
 
+  function clearSensitiveSource() {
+    setSource((current) => ({
+      ...current,
+      key: "",
+      password: "",
+    }));
+    setCredentialsConfirmed(false);
+  }
+
   function toggleTable(target) {
     setSelection((current) => ({ ...current, [target]: !current[target] }));
   }
@@ -57,17 +68,32 @@ export default function useMigration() {
   }
 
   async function inspect() {
+    if (!credentialsConfirmed) {
+      setError(
+        "Confirme que está usando apenas uma chave pública antes de continuar.",
+      );
+      return;
+    }
+
     setIsInspecting(true);
     resetMessages();
+
     try {
       const nextInspection = await inspectLegacySource(source);
       setInspection(nextInspection);
       setSelection(initialSelection);
-      setNotice("Dados antigos analisados. Revise as tabelas antes de iniciar a migração.");
+      setNotice(
+        "Dados antigos analisados. A chave e a senha foram removidas da tela. Revise as tabelas antes de iniciar a migração.",
+      );
     } catch (nextError) {
       setInspection(null);
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : String(nextError),
+      );
     } finally {
+      clearSensitiveSource();
       setIsInspecting(false);
     }
   }
@@ -107,8 +133,29 @@ export default function useMigration() {
   }
 
   async function prepareBackup(file) {
-    if (!file) { setPendingBackup(null); return; }
+    if (!file) {
+      setPendingBackup(null);
+      return;
+    }
+
     resetMessages();
+
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      setPendingBackup(null);
+      setError("O arquivo de backup não pode ultrapassar 10 MB.");
+      return;
+    }
+
+    if (
+      file.type &&
+      file.type !== "application/json" &&
+      !file.name.toLowerCase().endsWith(".json")
+    ) {
+      setPendingBackup(null);
+      setError("Selecione um arquivo JSON criado pelo Portfolio CMS.");
+      return;
+    }
+
     try {
       const backup = await parseAndValidateBackup(await file.text());
       setPendingBackup({ fileName: file.name, backup });
@@ -157,6 +204,8 @@ export default function useMigration() {
     isInspecting,
     isMigrating,
     isBackingUp,
+    credentialsConfirmed,
+    setCredentialsConfirmed,
     updateSource,
     toggleTable,
     selectAll,
