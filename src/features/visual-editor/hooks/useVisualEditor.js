@@ -13,16 +13,44 @@ import {
   saveCurrentBuilderSettings,
 } from "../../builder/services/builder.service";
 import {
+  getProfile,
+  upsertProfile,
+} from "../../profile/services/profile.service";
+import {
   createPreviewMessage,
   isPreviewMessage,
   previewMessageTypes,
 } from "../utils/previewMessages";
 
-function createDefaults() {
+const EMPTY_PROFILE = Object.freeze({
+  fullName: "",
+  professionalTitle: "",
+  shortBio: "",
+  bio: "",
+  location: "",
+  email: "",
+  phone: "",
+  githubUrl: "",
+  linkedinUrl: "",
+  websiteUrl: "",
+  instagramUrl: "",
+  youtubeUrl: "",
+  twitterUrl: "",
+  resumeUrl: "",
+  avatarUrl: "",
+  availableForWork: false,
+  isPublic: true,
+});
+
+function createBuilderDefaults() {
   return {
     ...DEFAULT_BUILDER_SETTINGS,
     sections: DEFAULT_SECTIONS.map((section) => ({ ...section })),
   };
+}
+
+function createProfileDefaults(profile = null) {
+  return { ...EMPTY_PROFILE, ...(profile || {}) };
 }
 
 function getPreviewOrigin(previewUrl) {
@@ -35,8 +63,12 @@ function getPreviewOrigin(previewUrl) {
 
 export function useVisualEditor({ previewUrl }) {
   const iframeRef = useRef(null);
-  const [settings, setSettings] = useState(createDefaults);
-  const [savedSettings, setSavedSettings] = useState(createDefaults);
+
+  const [settings, setSettings] = useState(createBuilderDefaults);
+  const [savedSettings, setSavedSettings] = useState(createBuilderDefaults);
+  const [profile, setProfile] = useState(createProfileDefaults);
+  const [savedProfile, setSavedProfile] = useState(createProfileDefaults);
+
   const [selectedSectionId, setSelectedSectionId] = useState("inicio");
   const [device, setDevice] = useState("desktop");
   const [isLoading, setIsLoading] = useState(true);
@@ -50,8 +82,10 @@ export function useVisualEditor({ previewUrl }) {
   );
 
   const isDirty = useMemo(
-    () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
-    [savedSettings, settings],
+    () =>
+      JSON.stringify(settings) !== JSON.stringify(savedSettings) ||
+      JSON.stringify(profile) !== JSON.stringify(savedProfile),
+    [profile, savedProfile, savedSettings, settings],
   );
 
   const sendToPreview = useCallback(
@@ -65,11 +99,28 @@ export function useVisualEditor({ previewUrl }) {
   );
 
   useEffect(() => {
-    getCurrentBuilderSettings()
-      .then((data) => {
-        setSettings(data);
-        setSavedSettings(data);
-        setLastSavedAt(data.updatedAt ? new Date(data.updatedAt) : null);
+    Promise.all([getCurrentBuilderSettings(), getProfile()])
+      .then(([builderData, profileData]) => {
+        const normalizedProfile = createProfileDefaults(profileData);
+
+        setSettings(builderData);
+        setSavedSettings(builderData);
+        setProfile(normalizedProfile);
+        setSavedProfile(normalizedProfile);
+
+        const timestamps = [
+          builderData?.updatedAt,
+          profileData?.updatedAt,
+        ]
+          .filter(Boolean)
+          .map((value) => new Date(value))
+          .filter((date) => !Number.isNaN(date.getTime()));
+
+        if (timestamps.length) {
+          setLastSavedAt(
+            new Date(Math.max(...timestamps.map((date) => date.getTime()))),
+          );
+        }
       })
       .catch((error) => {
         console.error("Erro ao carregar Editor Visual:", error);
@@ -87,6 +138,7 @@ export function useVisualEditor({ previewUrl }) {
       if (event.data.type === previewMessageTypes.ready) {
         setIsPreviewReady(true);
         sendToPreview(previewMessageTypes.applySettings, { settings });
+        sendToPreview(previewMessageTypes.applyProfile, { profile });
         sendToPreview(previewMessageTypes.selectSection, {
           sectionId: selectedSectionId,
         });
@@ -101,6 +153,7 @@ export function useVisualEditor({ previewUrl }) {
     return () => window.removeEventListener("message", handleMessage);
   }, [
     previewOrigin,
+    profile,
     selectedSectionId,
     sendToPreview,
     settings,
@@ -108,9 +161,13 @@ export function useVisualEditor({ previewUrl }) {
 
   useEffect(() => {
     if (!isPreviewReady) return;
-
     sendToPreview(previewMessageTypes.applySettings, { settings });
   }, [isPreviewReady, sendToPreview, settings]);
+
+  useEffect(() => {
+    if (!isPreviewReady) return;
+    sendToPreview(previewMessageTypes.applyProfile, { profile });
+  }, [isPreviewReady, profile, sendToPreview]);
 
   useEffect(() => {
     if (!isPreviewReady) return;
@@ -138,6 +195,14 @@ export function useVisualEditor({ previewUrl }) {
 
   const toggle = useCallback((field) => {
     setSettings((current) => ({ ...current, [field]: !current[field] }));
+  }, []);
+
+  const updateProfile = useCallback((field, value) => {
+    setProfile((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const toggleProfile = useCallback((field) => {
+    setProfile((current) => ({ ...current, [field]: !current[field] }));
   }, []);
 
   const toggleSection = useCallback((sectionId) => {
@@ -187,12 +252,21 @@ export function useVisualEditor({ previewUrl }) {
     setIsSaving(true);
 
     try {
-      const saved = await saveCurrentBuilderSettings(settings);
-      setSettings(saved);
-      setSavedSettings(saved);
+      const [savedBuilder, savedProfileData] = await Promise.all([
+        saveCurrentBuilderSettings(settings),
+        upsertProfile(profile),
+      ]);
+
+      const normalizedProfile = createProfileDefaults(savedProfileData);
+
+      setSettings(savedBuilder);
+      setSavedSettings(savedBuilder);
+      setProfile(normalizedProfile);
+      setSavedProfile(normalizedProfile);
       setLastSavedAt(new Date());
-      toast.success("Alterações visuais salvas.");
-      return saved;
+
+      toast.success("Conteúdo e layout salvos.");
+      return { settings: savedBuilder, profile: normalizedProfile };
     } catch (error) {
       console.error("Erro ao salvar Editor Visual:", error);
       toast.error(error.message || "Não foi possível salvar as alterações.");
@@ -200,12 +274,13 @@ export function useVisualEditor({ previewUrl }) {
     } finally {
       setIsSaving(false);
     }
-  }, [settings]);
+  }, [profile, settings]);
 
   const resetUnsaved = useCallback(() => {
     setSettings(savedSettings);
+    setProfile(savedProfile);
     toast.success("Alterações não salvas foram descartadas.");
-  }, [savedSettings]);
+  }, [savedProfile, savedSettings]);
 
   const handlePreviewLoad = useCallback(() => {
     setIsPreviewReady(false);
@@ -222,6 +297,7 @@ export function useVisualEditor({ previewUrl }) {
   return {
     iframeRef,
     settings,
+    profile,
     selectedSectionId,
     device,
     isLoading,
@@ -231,6 +307,8 @@ export function useVisualEditor({ previewUrl }) {
     lastSavedAt,
     update,
     toggle,
+    updateProfile,
+    toggleProfile,
     toggleSection,
     moveSection,
     selectSection,

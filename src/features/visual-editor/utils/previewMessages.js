@@ -4,6 +4,7 @@ export const previewMessageTypes = Object.freeze({
   ping: "PREVIEW_PING",
   ready: "PREVIEW_READY",
   applySettings: "APPLY_BUILDER_SETTINGS",
+  applyProfile: "APPLY_PROFILE_DRAFT",
   selectSection: "SELECT_SECTION",
   scrollToSection: "SCROLL_TO_SECTION",
   sectionSelected: "SECTION_SELECTED",

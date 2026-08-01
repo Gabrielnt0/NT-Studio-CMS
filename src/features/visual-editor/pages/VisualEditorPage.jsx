@@ -44,6 +44,7 @@ export default function VisualEditorPage() {
   const {
     iframeRef,
     settings,
+    profile,
     selectedSectionId,
     device,
     isLoading,
@@ -53,6 +54,8 @@ export default function VisualEditorPage() {
     lastSavedAt,
     update,
     toggle,
+    updateProfile,
+    toggleProfile,
     toggleSection,
     moveSection,
     selectSection,
@@ -313,8 +316,11 @@ export default function VisualEditorPage() {
             <SectionInspector
               section={selectedSection}
               settings={settings}
+              profile={profile}
               update={update}
               toggle={toggle}
+              updateProfile={updateProfile}
+              toggleProfile={toggleProfile}
             />
           </aside>
         )}

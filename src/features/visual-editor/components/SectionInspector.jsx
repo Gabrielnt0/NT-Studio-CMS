@@ -15,8 +15,11 @@ const contentRoutes = {
 export default function SectionInspector({
   section,
   settings,
+  profile,
   update,
   toggle,
+  updateProfile,
+  toggleProfile,
 }) {
   if (!section) {
     return (
@@ -40,43 +43,175 @@ export default function SectionInspector({
         to={contentRoutes[section.id] || "/site-builder"}
         className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 transition hover:border-blue-500/40 hover:text-white"
       >
-        Editar conteúdo detalhado
+        Abrir edição detalhada
         <ExternalLink size={16} />
       </Link>
 
       {section.id === "inicio" && (
-        <InspectorGroup title="Hero">
-          <Select
-            label="Layout"
-            value={settings.heroLayout}
-            onChange={(value) => update("heroLayout", value)}
-            options={[
-              ["split", "Dividido"],
-              ["centered", "Centralizado"],
-              ["fullscreen", "Tela cheia"],
-            ]}
-          />
-          <Toggle
-            label="Mostrar avatar"
-            checked={settings.showHeroAvatar}
-            onChange={() => toggle("showHeroAvatar")}
-          />
-          <Toggle
-            label="Botão de currículo"
-            checked={settings.showResumeButton}
-            onChange={() => toggle("showResumeButton")}
-          />
-          <Toggle
-            label="Botão de contato"
-            checked={settings.showContactButton}
-            onChange={() => toggle("showContactButton")}
-          />
-          <Toggle
-            label="Redes sociais"
-            checked={settings.showSocialLinks}
-            onChange={() => toggle("showSocialLinks")}
+        <>
+          <InspectorGroup title="Conteúdo do Hero">
+            <TextInput
+              label="Nome"
+              value={profile.fullName}
+              onChange={(value) => updateProfile("fullName", value)}
+            />
+            <TextInput
+              label="Título profissional"
+              value={profile.professionalTitle}
+              onChange={(value) => updateProfile("professionalTitle", value)}
+            />
+            <TextArea
+              label="Resumo curto"
+              value={profile.shortBio}
+              onChange={(value) => updateProfile("shortBio", value)}
+              rows={4}
+            />
+            <TextInput
+              label="Localização"
+              value={profile.location}
+              onChange={(value) => updateProfile("location", value)}
+            />
+            <TextInput
+              label="URL do avatar"
+              type="url"
+              value={profile.avatarUrl}
+              onChange={(value) => updateProfile("avatarUrl", value)}
+            />
+            <Toggle
+              label="Disponível para trabalhos"
+              checked={profile.availableForWork}
+              onChange={() => toggleProfile("availableForWork")}
+            />
+          </InspectorGroup>
+
+          <InspectorGroup title="Layout do Hero">
+            <Select
+              label="Layout"
+              value={settings.heroLayout}
+              onChange={(value) => update("heroLayout", value)}
+              options={[
+                ["split", "Dividido"],
+                ["centered", "Centralizado"],
+                ["fullscreen", "Tela cheia"],
+              ]}
+            />
+            <Toggle
+              label="Mostrar avatar"
+              checked={settings.showHeroAvatar}
+              onChange={() => toggle("showHeroAvatar")}
+            />
+            <Toggle
+              label="Botão de currículo"
+              checked={settings.showResumeButton}
+              onChange={() => toggle("showResumeButton")}
+            />
+            <Toggle
+              label="Botão de contato"
+              checked={settings.showContactButton}
+              onChange={() => toggle("showContactButton")}
+            />
+            <Toggle
+              label="Redes sociais"
+              checked={settings.showSocialLinks}
+              onChange={() => toggle("showSocialLinks")}
+            />
+          </InspectorGroup>
+        </>
+      )}
+
+      {section.id === "sobre" && (
+        <InspectorGroup title="Sobre">
+          <TextArea
+            label="Biografia"
+            value={profile.bio}
+            onChange={(value) => updateProfile("bio", value)}
+            rows={10}
           />
         </InspectorGroup>
+      )}
+
+      {section.id === "curriculo" && (
+        <InspectorGroup title="Currículo">
+          <TextInput
+            label="URL do currículo"
+            type="url"
+            value={profile.resumeUrl}
+            onChange={(value) => updateProfile("resumeUrl", value)}
+          />
+        </InspectorGroup>
+      )}
+
+      {section.id === "contato" && (
+        <>
+          <InspectorGroup title="Contato">
+            <TextInput
+              label="E-mail"
+              type="email"
+              value={profile.email}
+              onChange={(value) => updateProfile("email", value)}
+            />
+            <TextInput
+              label="Telefone"
+              value={profile.phone}
+              onChange={(value) => updateProfile("phone", value)}
+            />
+            <TextInput
+              label="GitHub"
+              type="url"
+              value={profile.githubUrl}
+              onChange={(value) => updateProfile("githubUrl", value)}
+            />
+            <TextInput
+              label="LinkedIn"
+              type="url"
+              value={profile.linkedinUrl}
+              onChange={(value) => updateProfile("linkedinUrl", value)}
+            />
+            <TextInput
+              label="Site"
+              type="url"
+              value={profile.websiteUrl}
+              onChange={(value) => updateProfile("websiteUrl", value)}
+            />
+            <TextInput
+              label="Instagram"
+              type="url"
+              value={profile.instagramUrl}
+              onChange={(value) => updateProfile("instagramUrl", value)}
+            />
+            <TextInput
+              label="YouTube"
+              type="url"
+              value={profile.youtubeUrl}
+              onChange={(value) => updateProfile("youtubeUrl", value)}
+            />
+            <TextInput
+              label="Twitter / X"
+              type="url"
+              value={profile.twitterUrl}
+              onChange={(value) => updateProfile("twitterUrl", value)}
+            />
+          </InspectorGroup>
+
+          <InspectorGroup title="Rodapé">
+            <TextInput
+              label="Texto do rodapé"
+              value={settings.footerText}
+              onChange={(value) => update("footerText", value)}
+              placeholder="© 2026 Gabriel"
+            />
+            <Toggle
+              label="Exibir redes no rodapé"
+              checked={settings.showFooterSocialLinks}
+              onChange={() => toggle("showFooterSocialLinks")}
+            />
+            <Toggle
+              label="Botão voltar ao topo"
+              checked={settings.showBackToTop}
+              onChange={() => toggle("showBackToTop")}
+            />
+          </InspectorGroup>
+        </>
       )}
 
       {section.id === "projetos" && (
@@ -141,21 +276,6 @@ export default function SectionInspector({
         </InspectorGroup>
       )}
 
-      {section.id === "contato" && (
-        <InspectorGroup title="Rodapé">
-          <Toggle
-            label="Exibir redes no rodapé"
-            checked={settings.showFooterSocialLinks}
-            onChange={() => toggle("showFooterSocialLinks")}
-          />
-          <Toggle
-            label="Botão voltar ao topo"
-            checked={settings.showBackToTop}
-            onChange={() => toggle("showBackToTop")}
-          />
-        </InspectorGroup>
-      )}
-
       <InspectorGroup title="Layout geral">
         <Select
           label="Alinhamento"
@@ -199,6 +319,41 @@ function InspectorGroup({ title, children }) {
       </p>
       {children}
     </section>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}) {
+  return (
+    <label className="block text-sm text-zinc-300">
+      <span className="mb-2 block">{label}</span>
+      <input
+        type={type}
+        value={value ?? ""}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 outline-none focus:border-blue-500"
+      />
+    </label>
+  );
+}
+
+function TextArea({ label, value, onChange, rows = 5 }) {
+  return (
+    <label className="block text-sm text-zinc-300">
+      <span className="mb-2 block">{label}</span>
+      <textarea
+        value={value ?? ""}
+        rows={rows}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 leading-6 outline-none focus:border-blue-500"
+      />
+    </label>
   );
 }
 
