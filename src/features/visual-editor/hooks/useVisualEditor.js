@@ -109,8 +109,34 @@ export function useVisualEditor({ previewUrl }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [historySize, setHistorySize] = useState(0);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(
+    () => window.localStorage.getItem("portfolio-visual-autosave") === "true",
+  );
+
+  const historyRef = useRef([]);
+  const historyTimerRef = useRef(null);
+  const skipHistoryRef = useRef(false);
 
   const previewOrigin = useMemo(() => getPreviewOrigin(previewUrl), [previewUrl]);
+
+  const createSnapshot = useCallback(
+    () => ({
+      settings: structuredClone(settings),
+      profile: structuredClone(profile),
+      theme: structuredClone(theme),
+    }),
+    [profile, settings, theme],
+  );
+
+  const applySnapshot = useCallback((snapshot) => {
+    if (!snapshot) return;
+    skipHistoryRef.current = true;
+    setSettings(structuredClone(snapshot.settings));
+    setProfile(structuredClone(snapshot.profile));
+    setTheme(structuredClone(snapshot.theme));
+  }, []);
 
   const isDirty = useMemo(
     () =>
@@ -151,6 +177,15 @@ export function useVisualEditor({ previewUrl }) {
         setTheme(normalizedTheme);
         setSavedTheme(normalizedTheme);
         setMedia(mediaData);
+
+        const initialSnapshot = {
+          settings: structuredClone(builderData),
+          profile: structuredClone(normalizedProfile),
+          theme: structuredClone(normalizedTheme),
+        };
+        historyRef.current = [initialSnapshot];
+        setHistoryIndex(0);
+        setHistorySize(1);
 
         const timestamps = [
           builderData?.updatedAt,
@@ -218,6 +253,101 @@ export function useVisualEditor({ previewUrl }) {
     if (!isPreviewReady) return;
     sendToPreview(previewMessageTypes.selectSection, { sectionId: selectedSectionId });
   }, [isPreviewReady, selectedSectionId, sendToPreview]);
+
+  useEffect(() => {
+    if (isLoading || historyIndex < 0) return;
+
+    if (skipHistoryRef.current) {
+      skipHistoryRef.current = false;
+      return;
+    }
+
+    window.clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = window.setTimeout(() => {
+      const nextSnapshot = createSnapshot();
+      const currentSnapshot = historyRef.current[historyIndex];
+
+      if (
+        currentSnapshot &&
+        JSON.stringify(currentSnapshot) === JSON.stringify(nextSnapshot)
+      ) {
+        return;
+      }
+
+      const nextHistory = historyRef.current
+        .slice(0, historyIndex + 1)
+        .concat(nextSnapshot)
+        .slice(-50);
+
+      historyRef.current = nextHistory;
+      setHistorySize(nextHistory.length);
+      setHistoryIndex(nextHistory.length - 1);
+    }, 450);
+
+    return () => window.clearTimeout(historyTimerRef.current);
+  }, [
+    createSnapshot,
+    historyIndex,
+    isLoading,
+    profile,
+    settings,
+    theme,
+  ]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo =
+    historyIndex >= 0 && historyIndex < historySize - 1;
+
+  const undo = useCallback(() => {
+    if (!canUndo) return;
+    const nextIndex = historyIndex - 1;
+    applySnapshot(historyRef.current[nextIndex]);
+    setHistoryIndex(nextIndex);
+  }, [applySnapshot, canUndo, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (!canRedo) return;
+    const nextIndex = historyIndex + 1;
+    applySnapshot(historyRef.current[nextIndex]);
+    setHistoryIndex(nextIndex);
+  }, [applySnapshot, canRedo, historyIndex]);
+
+  useEffect(() => {
+    function handleKeyboard(event) {
+      const target = event.target;
+      const isTyping =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target?.isContentEditable;
+
+      if (isTyping) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+
+      if (event.key.toLowerCase() === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      }
+
+      if (
+        event.key.toLowerCase() === "y" ||
+        (event.key.toLowerCase() === "z" && event.shiftKey)
+      ) {
+        event.preventDefault();
+        redo();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [redo, undo]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "portfolio-visual-autosave",
+      String(autoSaveEnabled),
+    );
+  }, [autoSaveEnabled]);
 
   useEffect(() => {
     function handleBeforeUnload(event) {
@@ -310,7 +440,7 @@ export function useVisualEditor({ previewUrl }) {
 
   const changeDevice = useCallback((nextDevice) => setDevice(nextDevice), []);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async ({ silent = false } = {}) => {
     setIsSaving(true);
     try {
       const [savedBuilder, savedProfileData, savedThemeData] = await Promise.all([
@@ -328,7 +458,9 @@ export function useVisualEditor({ previewUrl }) {
       setTheme(normalizedTheme);
       setSavedTheme(normalizedTheme);
       setLastSavedAt(new Date());
-      toast.success("Conteúdo, aparência e layout salvos.");
+      if (!silent) {
+        toast.success("Conteúdo, aparência e layout salvos.");
+      }
       return { settings: savedBuilder, profile: normalizedProfile, theme: normalizedTheme };
     } catch (error) {
       console.error("Erro ao salvar Editor Visual:", error);
@@ -338,6 +470,22 @@ export function useVisualEditor({ previewUrl }) {
       setIsSaving(false);
     }
   }, [profile, settings, theme]);
+
+  useEffect(() => {
+    if (!autoSaveEnabled || !isDirty || isSaving || isLoading) return;
+
+    const timer = window.setTimeout(() => {
+      save({ silent: true }).catch(() => {});
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    autoSaveEnabled,
+    isDirty,
+    isLoading,
+    isSaving,
+    save,
+  ]);
 
   const resetUnsaved = useCallback(() => {
     setSettings(savedSettings);
@@ -366,6 +514,9 @@ export function useVisualEditor({ previewUrl }) {
     isPreviewReady,
     isDirty,
     lastSavedAt,
+    canUndo,
+    canRedo,
+    autoSaveEnabled,
     update,
     toggle,
     updateProfile,
@@ -377,6 +528,9 @@ export function useVisualEditor({ previewUrl }) {
     moveSection,
     selectSection,
     changeDevice,
+    undo,
+    redo,
+    setAutoSaveEnabled,
     save,
     resetUnsaved,
     handlePreviewLoad,

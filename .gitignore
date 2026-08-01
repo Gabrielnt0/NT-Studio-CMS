@@ -32,3 +32,8 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+node_modules/
+dist/
+.vite/
+coverage/

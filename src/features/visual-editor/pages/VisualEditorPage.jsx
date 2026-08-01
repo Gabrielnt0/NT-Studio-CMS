@@ -8,6 +8,10 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Cloud,
+  CloudOff,
+  Redo2,
+  Undo2,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -54,6 +58,9 @@ export default function VisualEditorPage() {
     isPreviewReady,
     isDirty,
     lastSavedAt,
+    canUndo,
+    canRedo,
+    autoSaveEnabled,
     update,
     toggle,
     updateProfile,
@@ -65,6 +72,9 @@ export default function VisualEditorPage() {
     moveSection,
     selectSection,
     changeDevice,
+    undo,
+    redo,
+    setAutoSaveEnabled,
     save,
     resetUnsaved,
     handlePreviewLoad,
@@ -208,6 +218,48 @@ export default function VisualEditorPage() {
             {isPreviewReady ? "Conectado" : "Conectando"}
           </div>
 
+          <div className="hidden items-center rounded-lg border border-zinc-800 bg-zinc-950 sm:flex">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              className="p-2.5 text-zinc-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Desfazer"
+              title="Desfazer (Ctrl+Z)"
+            >
+              <Undo2 size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              className="p-2.5 text-zinc-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Refazer"
+              title="Refazer (Ctrl+Y)"
+            >
+              <Redo2 size={16} />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAutoSaveEnabled((current) => !current)}
+            className={[
+              "hidden items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition lg:flex",
+              autoSaveEnabled
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white",
+            ].join(" ")}
+            title={
+              autoSaveEnabled
+                ? "Autosave ativo: salva após 4 segundos"
+                : "Ativar salvamento automático"
+            }
+          >
+            {autoSaveEnabled ? <Cloud size={16} /> : <CloudOff size={16} />}
+            Autosave
+          </button>
+
           <button
             type="button"
             onClick={reloadPreview}
@@ -240,7 +292,7 @@ export default function VisualEditorPage() {
 
           <button
             type="button"
-            onClick={save}
+            onClick={() => save()}
             disabled={isSaving || !isDirty}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
