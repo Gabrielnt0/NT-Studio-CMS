@@ -4,8 +4,9 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { useSearchParams } from "react-router-dom";
 import Modal from "../../../components/feedback/Modal";
 import Badge from "../../../components/ui/Badge";
 import Button from "../../../components/ui/Button";
@@ -53,6 +54,7 @@ const emptyForm = {
 };
 
 function PortfolioPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     projects,
     isLoading,
@@ -93,6 +95,13 @@ function PortfolioPage() {
       return matchesCategory && matchesSearch;
     });
   }, [projects, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+
+    openNewProjectModal();
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   function openNewProjectModal() {
     setEditingProjectId(null);

@@ -360,19 +360,17 @@ function ThemePage() {
                 Uma apresentação profissional personalizada pelo Portfolio CMS.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className="px-5 py-3 text-sm font-semibold text-white"
+                <span
+                  className="inline-flex px-5 py-3 text-sm font-semibold text-white"
                   style={{
                     background: theme.primaryColor,
                     borderRadius: radius,
                   }}
                 >
                   Ver projetos
-                </button>
-                <button
-                  type="button"
-                  className="border px-5 py-3 text-sm font-semibold"
+                </span>
+                <span
+                  className="inline-flex border px-5 py-3 text-sm font-semibold"
                   style={{
                     color: theme.titleColor,
                     borderColor: theme.borderColor,
@@ -380,7 +378,7 @@ function ThemePage() {
                   }}
                 >
                   Entrar em contato
-                </button>
+                </span>
               </div>
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {["Projeto em destaque", "Experiência"].map((title) => (

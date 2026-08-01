@@ -69,6 +69,8 @@ function AppRouter() {
               <Route path="/settings/migration" element={<Migration />} />
             </Route>
           </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
