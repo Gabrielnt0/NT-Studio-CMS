@@ -47,6 +47,14 @@ export function validateSeoForm(formData) {
     return `${invalidUrl[0]} deve começar com http:// ou https://.`;
   }
 
+  if (formData.googleAnalytics.trim() && !/^G-[A-Z0-9]+$/i.test(formData.googleAnalytics.trim())) {
+    return "O Measurement ID do Google Analytics deve seguir o formato G-XXXXXXXXXX.";
+  }
+
+  if (formData.googleTagManager.trim() && !/^GTM-[A-Z0-9]+$/i.test(formData.googleTagManager.trim())) {
+    return "O Container ID do Google Tag Manager deve seguir o formato GTM-XXXXXXX.";
+  }
+
   return null;
 }
 

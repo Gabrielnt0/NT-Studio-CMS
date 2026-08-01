@@ -153,11 +153,19 @@ export default function SeoPage() {
       )}
 
       {activeTab === "integrations" && (
-        <section className="grid gap-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-6 md:grid-cols-2">
-          <Input label="Google Analytics" name="googleAnalytics" value={formData.googleAnalytics} onChange={handleChange} placeholder="G-XXXXXXXXXX" />
-          <Input label="Google Tag Manager" name="googleTagManager" value={formData.googleTagManager} onChange={handleChange} placeholder="GTM-XXXXXXX" />
-          <Input label="Google Search Console" name="googleSearchConsole" value={formData.googleSearchConsole} onChange={handleChange} placeholder="Código de verificação" />
-          <Input label="Bing Webmaster Tools" name="bingWebmaster" value={formData.bingWebmaster} onChange={handleChange} placeholder="Código de verificação" />
+        <section className="space-y-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+          <div>
+            <h2 className="font-semibold text-white">Códigos aplicados ao site público</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Os valores abaixo são carregados automaticamente pelo portfólio. O Property ID usado para consultar métricas continua em Configurações.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <Input label="Google Analytics — Measurement ID" name="googleAnalytics" value={formData.googleAnalytics} onChange={handleChange} placeholder="G-XXXXXXXXXX" />
+            <Input label="Google Tag Manager — Container ID" name="googleTagManager" value={formData.googleTagManager} onChange={handleChange} placeholder="GTM-XXXXXXX" />
+            <Input label="Google Search Console — verificação" name="googleSearchConsole" value={formData.googleSearchConsole} onChange={handleChange} placeholder="Código de verificação" />
+            <Input label="Bing Webmaster Tools — verificação" name="bingWebmaster" value={formData.bingWebmaster} onChange={handleChange} placeholder="Código de verificação" />
+          </div>
         </section>
       )}
 
