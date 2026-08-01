@@ -45,6 +45,8 @@ export default function VisualEditorPage() {
     iframeRef,
     settings,
     profile,
+    theme,
+    media,
     selectedSectionId,
     device,
     isLoading,
@@ -56,6 +58,9 @@ export default function VisualEditorPage() {
     toggle,
     updateProfile,
     toggleProfile,
+    updateTheme,
+    updateSectionStyle,
+    resetSectionStyle,
     toggleSection,
     moveSection,
     selectSection,
@@ -317,10 +322,15 @@ export default function VisualEditorPage() {
               section={selectedSection}
               settings={settings}
               profile={profile}
+              theme={theme}
+              media={media}
               update={update}
               toggle={toggle}
               updateProfile={updateProfile}
               toggleProfile={toggleProfile}
+              updateTheme={updateTheme}
+              updateSectionStyle={updateSectionStyle}
+              resetSectionStyle={resetSectionStyle}
             />
           </aside>
         )}

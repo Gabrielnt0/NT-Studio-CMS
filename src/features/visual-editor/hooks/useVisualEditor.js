@@ -12,10 +12,16 @@ import {
   getCurrentBuilderSettings,
   saveCurrentBuilderSettings,
 } from "../../builder/services/builder.service";
+import { listMedia } from "../../media/services/media.service";
 import {
   getProfile,
   upsertProfile,
 } from "../../profile/services/profile.service";
+import {
+  DEFAULT_THEME,
+  getCurrentTheme,
+  saveCurrentTheme,
+} from "../../theme/services/theme.service";
 import {
   createPreviewMessage,
   isPreviewMessage,
@@ -42,6 +48,20 @@ const EMPTY_PROFILE = Object.freeze({
   isPublic: true,
 });
 
+const EMPTY_SECTION_STYLE = Object.freeze({
+  backgroundColor: "",
+  textColor: "",
+  backgroundImage: "",
+  backgroundOverlay: 0,
+  paddingTop: 0,
+  paddingBottom: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  borderColor: "",
+  borderWidth: 0,
+  borderRadius: 0,
+});
+
 function createBuilderDefaults() {
   return {
     ...DEFAULT_BUILDER_SETTINGS,
@@ -51,6 +71,19 @@ function createBuilderDefaults() {
 
 function createProfileDefaults(profile = null) {
   return { ...EMPTY_PROFILE, ...(profile || {}) };
+}
+
+function createThemeDefaults(theme = null) {
+  const current = { ...DEFAULT_THEME, ...(theme || {}) };
+  return {
+    ...current,
+    settings: {
+      ...(current.settings || {}),
+      sectionStyles: {
+        ...(current.settings?.sectionStyles || {}),
+      },
+    },
+  };
 }
 
 function getPreviewOrigin(previewUrl) {
@@ -63,12 +96,13 @@ function getPreviewOrigin(previewUrl) {
 
 export function useVisualEditor({ previewUrl }) {
   const iframeRef = useRef(null);
-
   const [settings, setSettings] = useState(createBuilderDefaults);
   const [savedSettings, setSavedSettings] = useState(createBuilderDefaults);
   const [profile, setProfile] = useState(createProfileDefaults);
   const [savedProfile, setSavedProfile] = useState(createProfileDefaults);
-
+  const [theme, setTheme] = useState(createThemeDefaults);
+  const [savedTheme, setSavedTheme] = useState(createThemeDefaults);
+  const [media, setMedia] = useState([]);
   const [selectedSectionId, setSelectedSectionId] = useState("inicio");
   const [device, setDevice] = useState("desktop");
   const [isLoading, setIsLoading] = useState(true);
@@ -76,16 +110,14 @@ export function useVisualEditor({ previewUrl }) {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
 
-  const previewOrigin = useMemo(
-    () => getPreviewOrigin(previewUrl),
-    [previewUrl],
-  );
+  const previewOrigin = useMemo(() => getPreviewOrigin(previewUrl), [previewUrl]);
 
   const isDirty = useMemo(
     () =>
       JSON.stringify(settings) !== JSON.stringify(savedSettings) ||
-      JSON.stringify(profile) !== JSON.stringify(savedProfile),
-    [profile, savedProfile, savedSettings, settings],
+      JSON.stringify(profile) !== JSON.stringify(savedProfile) ||
+      JSON.stringify(theme) !== JSON.stringify(savedTheme),
+    [profile, savedProfile, savedSettings, savedTheme, settings, theme],
   );
 
   const sendToPreview = useCallback(
@@ -99,18 +131,31 @@ export function useVisualEditor({ previewUrl }) {
   );
 
   useEffect(() => {
-    Promise.all([getCurrentBuilderSettings(), getProfile()])
-      .then(([builderData, profileData]) => {
+    Promise.all([
+      getCurrentBuilderSettings(),
+      getProfile(),
+      getCurrentTheme(),
+      listMedia().catch((error) => {
+        console.warn("Não foi possível carregar a Biblioteca de Mídia.", error);
+        return [];
+      }),
+    ])
+      .then(([builderData, profileData, themeData, mediaData]) => {
         const normalizedProfile = createProfileDefaults(profileData);
+        const normalizedTheme = createThemeDefaults(themeData);
 
         setSettings(builderData);
         setSavedSettings(builderData);
         setProfile(normalizedProfile);
         setSavedProfile(normalizedProfile);
+        setTheme(normalizedTheme);
+        setSavedTheme(normalizedTheme);
+        setMedia(mediaData);
 
         const timestamps = [
           builderData?.updatedAt,
           profileData?.updatedAt,
+          themeData?.updatedAt,
         ]
           .filter(Boolean)
           .map((value) => new Date(value))
@@ -139,6 +184,7 @@ export function useVisualEditor({ previewUrl }) {
         setIsPreviewReady(true);
         sendToPreview(previewMessageTypes.applySettings, { settings });
         sendToPreview(previewMessageTypes.applyProfile, { profile });
+        sendToPreview(previewMessageTypes.applyTheme, { theme });
         sendToPreview(previewMessageTypes.selectSection, {
           sectionId: selectedSectionId,
         });
@@ -151,13 +197,7 @@ export function useVisualEditor({ previewUrl }) {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [
-    previewOrigin,
-    profile,
-    selectedSectionId,
-    sendToPreview,
-    settings,
-  ]);
+  }, [previewOrigin, profile, selectedSectionId, sendToPreview, settings, theme]);
 
   useEffect(() => {
     if (!isPreviewReady) return;
@@ -171,20 +211,20 @@ export function useVisualEditor({ previewUrl }) {
 
   useEffect(() => {
     if (!isPreviewReady) return;
+    sendToPreview(previewMessageTypes.applyTheme, { theme });
+  }, [isPreviewReady, sendToPreview, theme]);
 
-    sendToPreview(previewMessageTypes.selectSection, {
-      sectionId: selectedSectionId,
-    });
+  useEffect(() => {
+    if (!isPreviewReady) return;
+    sendToPreview(previewMessageTypes.selectSection, { sectionId: selectedSectionId });
   }, [isPreviewReady, selectedSectionId, sendToPreview]);
 
   useEffect(() => {
     function handleBeforeUnload(event) {
       if (!isDirty) return;
-
       event.preventDefault();
       event.returnValue = "";
     }
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
@@ -205,6 +245,38 @@ export function useVisualEditor({ previewUrl }) {
     setProfile((current) => ({ ...current, [field]: !current[field] }));
   }, []);
 
+  const updateTheme = useCallback((field, value) => {
+    setTheme((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const updateSectionStyle = useCallback((sectionId, field, value) => {
+    setTheme((current) => ({
+      ...current,
+      settings: {
+        ...(current.settings || {}),
+        sectionStyles: {
+          ...(current.settings?.sectionStyles || {}),
+          [sectionId]: {
+            ...EMPTY_SECTION_STYLE,
+            ...(current.settings?.sectionStyles?.[sectionId] || {}),
+            [field]: value,
+          },
+        },
+      },
+    }));
+  }, []);
+
+  const resetSectionStyle = useCallback((sectionId) => {
+    setTheme((current) => {
+      const nextStyles = { ...(current.settings?.sectionStyles || {}) };
+      delete nextStyles[sectionId];
+      return {
+        ...current,
+        settings: { ...(current.settings || {}), sectionStyles: nextStyles },
+      };
+    });
+  }, []);
+
   const toggleSection = useCallback((sectionId) => {
     setSettings((current) => ({
       ...current,
@@ -218,55 +290,46 @@ export function useVisualEditor({ previewUrl }) {
 
   const moveSection = useCallback((sourceId, targetId) => {
     if (!sourceId || sourceId === targetId) return;
-
     setSettings((current) => {
       const sections = [...current.sections];
       const sourceIndex = sections.findIndex((item) => item.id === sourceId);
       const targetIndex = sections.findIndex((item) => item.id === targetId);
-
       if (sourceIndex < 0 || targetIndex < 0) return current;
-
       const [moved] = sections.splice(sourceIndex, 1);
       sections.splice(targetIndex, 0, moved);
-
       return { ...current, sections };
     });
   }, []);
 
-  const selectSection = useCallback(
-    (sectionId, shouldScroll = true) => {
-      setSelectedSectionId(sectionId);
+  const selectSection = useCallback((sectionId, shouldScroll = true) => {
+    setSelectedSectionId(sectionId);
+    if (shouldScroll) {
+      sendToPreview(previewMessageTypes.scrollToSection, { sectionId });
+    }
+  }, [sendToPreview]);
 
-      if (shouldScroll) {
-        sendToPreview(previewMessageTypes.scrollToSection, { sectionId });
-      }
-    },
-    [sendToPreview],
-  );
-
-  const changeDevice = useCallback((nextDevice) => {
-    setDevice(nextDevice);
-  }, []);
+  const changeDevice = useCallback((nextDevice) => setDevice(nextDevice), []);
 
   const save = useCallback(async () => {
     setIsSaving(true);
-
     try {
-      const [savedBuilder, savedProfileData] = await Promise.all([
+      const [savedBuilder, savedProfileData, savedThemeData] = await Promise.all([
         saveCurrentBuilderSettings(settings),
         upsertProfile(profile),
+        saveCurrentTheme(theme),
       ]);
 
       const normalizedProfile = createProfileDefaults(savedProfileData);
-
+      const normalizedTheme = createThemeDefaults(savedThemeData);
       setSettings(savedBuilder);
       setSavedSettings(savedBuilder);
       setProfile(normalizedProfile);
       setSavedProfile(normalizedProfile);
+      setTheme(normalizedTheme);
+      setSavedTheme(normalizedTheme);
       setLastSavedAt(new Date());
-
-      toast.success("Conteúdo e layout salvos.");
-      return { settings: savedBuilder, profile: normalizedProfile };
+      toast.success("Conteúdo, aparência e layout salvos.");
+      return { settings: savedBuilder, profile: normalizedProfile, theme: normalizedTheme };
     } catch (error) {
       console.error("Erro ao salvar Editor Visual:", error);
       toast.error(error.message || "Não foi possível salvar as alterações.");
@@ -274,30 +337,28 @@ export function useVisualEditor({ previewUrl }) {
     } finally {
       setIsSaving(false);
     }
-  }, [profile, settings]);
+  }, [profile, settings, theme]);
 
   const resetUnsaved = useCallback(() => {
     setSettings(savedSettings);
     setProfile(savedProfile);
+    setTheme(savedTheme);
     toast.success("Alterações não salvas foram descartadas.");
-  }, [savedProfile, savedSettings]);
+  }, [savedProfile, savedSettings, savedTheme]);
 
   const handlePreviewLoad = useCallback(() => {
     setIsPreviewReady(false);
-
-    window.setTimeout(() => {
-      sendToPreview(previewMessageTypes.ping);
-    }, 100);
+    window.setTimeout(() => sendToPreview(previewMessageTypes.ping), 100);
   }, [sendToPreview]);
 
-  const markPreviewReloading = useCallback(() => {
-    setIsPreviewReady(false);
-  }, []);
+  const markPreviewReloading = useCallback(() => setIsPreviewReady(false), []);
 
   return {
     iframeRef,
     settings,
     profile,
+    theme,
+    media,
     selectedSectionId,
     device,
     isLoading,
@@ -309,6 +370,9 @@ export function useVisualEditor({ previewUrl }) {
     toggle,
     updateProfile,
     toggleProfile,
+    updateTheme,
+    updateSectionStyle,
+    resetSectionStyle,
     toggleSection,
     moveSection,
     selectSection,
