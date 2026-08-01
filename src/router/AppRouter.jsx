@@ -19,6 +19,7 @@ const Seo = lazy(() => import("../pages/Seo"));
 const Settings = lazy(() => import("../pages/Settings"));
 const Skills = lazy(() => import("../pages/Skills"));
 const Theme = lazy(() => import("../pages/Theme"));
+const SiteBuilder = lazy(() => import("../pages/SiteBuilder"));
 
 function PageLoader() {
   return (
@@ -55,6 +56,7 @@ function AppRouter() {
               <Route path="/skills" element={<Skills />} />
               <Route path="/seo" element={<Seo />} />
               <Route path="/appearance" element={<Theme />} />
+              <Route path="/site-builder" element={<SiteBuilder />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route
                 path="/integrations"
