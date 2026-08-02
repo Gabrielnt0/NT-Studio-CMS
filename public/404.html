@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecionando...</title>
+    <script>
+      // Mantém as rotas do React Router funcionando no GitHub Pages.
+      const pathSegmentsToKeep = 1;
+      const locationData = window.location;
+
+      locationData.replace(
+        `${locationData.protocol}//${locationData.hostname}${locationData.port ? `:${locationData.port}` : ""}` +
+          locationData.pathname
+            .split("/")
+            .slice(0, 1 + pathSegmentsToKeep)
+            .join("/") +
+          "/?/" +
+          locationData.pathname
+            .slice(1)
+            .split("/")
+            .slice(pathSegmentsToKeep)
+            .join("/")
+            .replace(/&/g, "~and~") +
+          (locationData.search
+            ? `&${locationData.search.slice(1).replace(/&/g, "~and~")}`
+            : "") +
+          locationData.hash,
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

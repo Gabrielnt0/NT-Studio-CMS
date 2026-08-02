@@ -3,6 +3,29 @@
   <head>
     <meta charset="UTF-8" />
 
+    <script>
+      // Restaura a rota original após o redirecionamento do 404.html.
+      (() => {
+        const locationData = window.location;
+
+        if (!locationData.search.startsWith("?/")) return;
+
+        const decodedRoute = locationData.search
+          .slice(2)
+          .split("&")
+          .map((part) => part.replace(/~and~/g, "&"));
+
+        const routePath = decodedRoute.shift() || "";
+        const queryString = decodedRoute.length ? `?${decodedRoute.join("&")}` : "";
+
+        window.history.replaceState(
+          null,
+          "",
+          `${locationData.pathname.slice(0, -1)}${routePath ? `/${routePath}` : "/"}${queryString}${locationData.hash}`,
+        );
+      })();
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <meta
